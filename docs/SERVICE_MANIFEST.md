@@ -1,10 +1,10 @@
-# Service Manifest: BWinkeler Lists
+# Service Manifest: Listly
 
 ## Identity
 
 - Platform architecture version: 1.3
 - Service ID: `lists`
-- Product name: BWinkeler Lists
+- Product name: Listly
 - Repository: https://github.com/brunowinkeler/bwinkeler-lists
 - Owner: Bruno Winkeler
 - Criticality: family

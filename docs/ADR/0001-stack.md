@@ -5,7 +5,7 @@
 
 ## Context
 
-BWinkeler Lists is a real-time collaborative lists application under the
+Listly is a real-time collaborative lists application under the
 bwinkeler.com platform. The platform architecture (`BW-PLATFORM-ARCH-001`) is
 stack-agnostic and requires self-hosting, portability, single-replica operation
 without Redis, and PostgreSQL as the source of truth. The v1 requirements

@@ -1,6 +1,6 @@
 # Operations
 
-Operational guide for BWinkeler Lists (`service_id: lists`). Read alongside
+Operational guide for Listly (`service_id: lists`). Read alongside
 `docs/PLATFORM_ARCHITECTURE.md` and `docs/SERVICE_MANIFEST.md`.
 
 ## Prerequisites
