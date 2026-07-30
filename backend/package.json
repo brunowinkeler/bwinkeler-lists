@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/scripts/seed.ts",
+    "create-user": "tsx src/scripts/create-user.ts",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

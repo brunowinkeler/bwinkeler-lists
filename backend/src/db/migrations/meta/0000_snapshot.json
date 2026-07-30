@@ -74,12 +74,8 @@
           "name": "audit_log_actor_id_users_id_fk",
           "tableFrom": "audit_log",
           "tableTo": "users",
-          "columnsFrom": [
-            "actor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["actor_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -216,12 +212,8 @@
           "name": "items_list_id_lists_id_fk",
           "tableFrom": "items",
           "tableTo": "lists",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -229,12 +221,8 @@
           "name": "items_assignee_id_users_id_fk",
           "tableFrom": "items",
           "tableTo": "users",
-          "columnsFrom": [
-            "assignee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assignee_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -242,12 +230,8 @@
           "name": "items_created_by_users_id_fk",
           "tableFrom": "items",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -353,12 +337,8 @@
           "name": "list_invitations_list_id_lists_id_fk",
           "tableFrom": "list_invitations",
           "tableTo": "lists",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -366,12 +346,8 @@
           "name": "list_invitations_invited_user_id_users_id_fk",
           "tableFrom": "list_invitations",
           "tableTo": "users",
-          "columnsFrom": [
-            "invited_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invited_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -379,12 +355,8 @@
           "name": "list_invitations_invited_by_users_id_fk",
           "tableFrom": "list_invitations",
           "tableTo": "users",
-          "columnsFrom": [
-            "invited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -448,12 +420,8 @@
           "name": "list_members_list_id_lists_id_fk",
           "tableFrom": "list_members",
           "tableTo": "lists",
-          "columnsFrom": [
-            "list_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["list_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -461,12 +429,8 @@
           "name": "list_members_user_id_users_id_fk",
           "tableFrom": "list_members",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -474,10 +438,7 @@
       "compositePrimaryKeys": {
         "list_members_list_id_user_id_pk": {
           "name": "list_members_list_id_user_id_pk",
-          "columns": [
-            "list_id",
-            "user_id"
-          ]
+          "columns": ["list_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -559,12 +520,8 @@
           "name": "lists_owner_id_users_id_fk",
           "tableFrom": "lists",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -647,12 +604,8 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -744,12 +697,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -840,44 +789,27 @@
     "public.invitation_status": {
       "name": "invitation_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "accepted",
-        "declined",
-        "cancelled"
-      ]
+      "values": ["pending", "accepted", "declined", "cancelled"]
     },
     "public.item_status": {
       "name": "item_status",
       "schema": "public",
-      "values": [
-        "open",
-        "done"
-      ]
+      "values": ["open", "done"]
     },
     "public.list_kind": {
       "name": "list_kind",
       "schema": "public",
-      "values": [
-        "simple",
-        "task"
-      ]
+      "values": ["simple", "task"]
     },
     "public.member_role": {
       "name": "member_role",
       "schema": "public",
-      "values": [
-        "owner",
-        "editor"
-      ]
+      "values": ["owner", "editor"]
     },
     "public.notification_type": {
       "name": "notification_type",
       "schema": "public",
-      "values": [
-        "list_invitation",
-        "task_assignment"
-      ]
+      "values": ["list_invitation", "task_assignment"]
     }
   },
   "schemas": {},

@@ -53,7 +53,13 @@ async function main(): Promise<void> {
   await db.insert(items).values([
     { listId: shopping.id, title: 'Milk', position: '000001', createdBy: admin.id },
     { listId: shopping.id, title: 'Bread', position: '000002', createdBy: admin.id },
-    { listId: shopping.id, title: 'Eggs', position: '000003', status: 'done', createdBy: member.id },
+    {
+      listId: shopping.id,
+      title: 'Eggs',
+      position: '000003',
+      status: 'done',
+      createdBy: member.id,
+    },
   ]);
 
   const tasks = first(
