@@ -11,5 +11,6 @@ npm-debug.log*
 Thumbs.db
 playwright-report/
 test-results/
+playwright/.auth/
 .vite/
 *.tsbuildinfo

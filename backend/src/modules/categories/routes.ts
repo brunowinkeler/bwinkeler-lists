@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import {
   createCategoryInputSchema,
-  renameCategoryInputSchema,
   reorderCategoryInputSchema,
+  updateCategoryInputSchema,
 } from '@bwinkeler-lists/shared';
 import { getSessionUser } from '../../auth/guards.js';
 import { getListRole } from '../../authz.js';
@@ -43,7 +43,7 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
     if (!user) return;
     const { id } = request.params;
 
-    const parsed = renameCategoryInputSchema.safeParse(request.body);
+    const parsed = updateCategoryInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
 
     const existing = (await db.select().from(categories).where(eq(categories.id, id)).limit(1))[0];
@@ -52,11 +52,13 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
       return reply.code(404).send({ error: 'Category not found' });
     }
 
-    const rows = await db
-      .update(categories)
-      .set({ name: parsed.data.name, updatedAt: new Date() })
-      .where(eq(categories.id, id))
-      .returning();
+    const updates: { name?: string; color?: string | null; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+    if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+    if (parsed.data.color !== undefined) updates.color = parsed.data.color;
+
+    const rows = await db.update(categories).set(updates).where(eq(categories.id, id)).returning();
     const category = rows[0];
     if (!category) return reply.code(404).send({ error: 'Category not found' });
     await touchList(db, existing.listId);

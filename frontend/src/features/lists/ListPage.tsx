@@ -33,6 +33,7 @@ import {
   fetchListDetail,
   listKey,
   listsKey,
+  recolorCategory,
   renameCategory,
   renameList,
   reorderCategory,
@@ -49,17 +50,19 @@ interface Column {
   id: string;
   categoryId: string | null;
   name: string;
+  color: string | null;
 }
 
 type Board = Record<string, ItemDto[]>;
 
 function buildBoard(detail: ListDetailDto): { columns: Column[]; board: Board } {
   const columns: Column[] = [
-    { id: UNCATEGORIZED, categoryId: null, name: 'Uncategorized' },
+    { id: UNCATEGORIZED, categoryId: null, name: 'Uncategorized', color: null },
     ...detail.categories.map((category) => ({
       id: category.id,
       categoryId: category.id,
       name: category.name,
+      color: category.color,
     })),
   ];
   const columnIds = new Set(columns.map((column) => column.id));
@@ -133,6 +136,11 @@ export function ListPage() {
   });
   const categoryRename = useMutation({
     mutationFn: (vars: { id: string; name: string }) => renameCategory(vars.id, vars.name),
+    onSuccess: () => void invalidate(),
+  });
+  const categoryRecolor = useMutation({
+    mutationFn: (vars: { id: string; color: string | null }) =>
+      recolorCategory(vars.id, vars.color),
     onSuccess: () => void invalidate(),
   });
   const categoryDelete = useMutation({
@@ -504,6 +512,16 @@ export function ListPage() {
                   members={data.members}
                   items={board[column.id] ?? []}
                   itemDragActive={activeType === 'item'}
+                  color={column.color}
+                  onRecolor={
+                    column.categoryId
+                      ? (nextColor) =>
+                          categoryRecolor.mutate({
+                            id: column.categoryId as string,
+                            color: nextColor,
+                          })
+                      : undefined
+                  }
                   onRename={
                     column.categoryId
                       ? (nextName) =>

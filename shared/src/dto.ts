@@ -79,6 +79,18 @@ export const renameCategoryInputSchema = z.object({
 });
 export type RenameCategoryInput = z.infer<typeof renameCategoryInputSchema>;
 
+const categoryColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Invalid color');
+
+export const updateCategoryInputSchema = z
+  .object({
+    name: categoryNameSchema.optional(),
+    color: categoryColorSchema.nullable().optional(),
+  })
+  .refine((value) => value.name !== undefined || value.color !== undefined, {
+    message: 'No fields to update',
+  });
+export type UpdateCategoryInput = z.infer<typeof updateCategoryInputSchema>;
+
 export const reorderCategoryInputSchema = z.object({
   previousId: z.uuid().nullable().optional(),
   nextId: z.uuid().nullable().optional(),
@@ -135,6 +147,7 @@ export interface CategoryDto {
   id: string;
   listId: string;
   name: string;
+  color: string | null;
   position: string;
   createdAt: string;
   updatedAt: string;

@@ -1,6 +1,8 @@
+import { useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NotificationDto } from '@bwinkeler-lists/shared';
 import { apiGet, apiSend } from '../../lib/api';
+import { useDetailsOutsideClose } from '../../lib/useDetailsOutsideClose';
 import { BellIcon } from '../../components/icons';
 
 function describe(notification: NotificationDto): string {
@@ -29,8 +31,12 @@ export function NotificationsMenu() {
   const items = notifications.data?.notifications ?? [];
   const unread = items.filter((notification) => !notification.readAt).length;
 
+  // Native <details> stays open when clicking elsewhere; close it on outside press.
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  useDetailsOutsideClose(detailsRef);
+
   return (
-    <details className="popover">
+    <details ref={detailsRef} className="popover">
       <summary
         className="icon-btn notif-trigger"
         aria-label={`Notifications, ${unread} unread`}

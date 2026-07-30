@@ -60,7 +60,7 @@ export function SharingPanel({ listId, members, invitations }: SharingPanelProps
             placeholder="name@example.com"
           />
         </div>
-        <button className="primary" type="submit" disabled={invite.isPending}>
+        <button className="primary field-action" type="submit" disabled={invite.isPending}>
           Invite
         </button>
       </form>

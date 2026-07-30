@@ -34,6 +34,7 @@ export function toCategoryDto(row: typeof categories.$inferSelect): CategoryDto 
     id: row.id,
     listId: row.listId,
     name: row.name,
+    color: row.color,
     position: row.position,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -181,7 +182,12 @@ export async function duplicateList(
     for (const category of sourceCategories) {
       const rows = await tx
         .insert(categories)
-        .values({ listId: newList.id, name: category.name, position: category.position })
+        .values({
+          listId: newList.id,
+          name: category.name,
+          color: category.color,
+          position: category.position,
+        })
         .returning({ id: categories.id });
       const newId = rows[0]?.id;
       if (newId) categoryIdMap.set(category.id, newId);

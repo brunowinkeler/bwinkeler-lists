@@ -58,6 +58,13 @@ export function renameCategory(id: string, name: string): Promise<{ category: Ca
   return apiSend('PATCH', `/categories/${id}`, { name });
 }
 
+export function recolorCategory(
+  id: string,
+  color: string | null,
+): Promise<{ category: CategoryDto }> {
+  return apiSend('PATCH', `/categories/${id}`, { color });
+}
+
 export function deleteCategory(id: string): Promise<void> {
   return apiSend('DELETE', `/categories/${id}`);
 }

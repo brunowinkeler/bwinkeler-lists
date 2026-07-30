@@ -1,22 +1,40 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+const STORAGE_STATE = 'playwright/.auth/user.json';
+
+// The suite authenticates once (see auth.setup.ts) and reuses the session via
+// storageState, so this just lands on the authenticated overview.
 async function login(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByLabel('Email').fill('admin@example.test');
-  await page.getByLabel('Password').fill('dev-password-change-me');
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Your lists' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Your lists' })).toBeVisible({ timeout: 15_000 });
 }
 
 async function dragOnto(page: Page, source: Locator, target: Locator): Promise<void> {
   const from = await source.boundingBox();
-  const to = await target.boundingBox();
-  if (!from || !to) throw new Error('bounding box missing');
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  if (!from) throw new Error('source bounding box missing');
+  const startX = from.x + from.width / 2;
+  const startY = from.y + from.height / 2;
+  await page.mouse.move(startX, startY);
   await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2, from.y - 8, { steps: 4 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 4, { steps: 4 });
+  // Cross the 5px pointer-sensor activation threshold in small steps so dnd-kit
+  // reliably enters drag mode even when the event loop is busy under load.
+  await page.mouse.move(startX, startY - 6, { steps: 3 });
+  await page.mouse.move(startX, startY - 14, { steps: 3 });
+  await page.waitForTimeout(60);
+  const to = await target.boundingBox();
+  if (!to) throw new Error('target bounding box missing');
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
+  // dnd-kit's onDragOver reflows the board (the item is lifted out of its
+  // column), which can shift the target out from under the pointer. Let that
+  // settle, then re-read the persistent target and release directly over its
+  // current position so `over` is defined when onDragEnd fires.
+  await page.waitForTimeout(150);
+  const settled = await target.boundingBox();
+  if (settled) {
+    await page.mouse.move(settled.x + settled.width / 2, settled.y + settled.height / 2, {
+      steps: 5,
+    });
+  }
   await page.mouse.up();
 }
 
@@ -39,8 +57,8 @@ test('create a list, add and complete an item, and persist across reload', async
 });
 
 test('realtime: a second browser context sees a newly added item', async ({ browser }) => {
-  const contextA = await browser.newContext();
-  const contextB = await browser.newContext();
+  const contextA = await browser.newContext({ storageState: STORAGE_STATE });
+  const contextB = await browser.newContext({ storageState: STORAGE_STATE });
   const pageA = await contextA.newPage();
   const pageB = await contextB.newPage();
 
@@ -200,7 +218,7 @@ test('move an item into a category', async ({ page }) => {
   const fruitPanel = page.locator('.panel', {
     has: page.getByRole('button', { name: 'Fruit', exact: true }),
   });
-  await dragOnto(page, handle, fruitPanel.locator('.panel__empty'));
+  await dragOnto(page, handle, fruitPanel.locator('.panel__body'));
 
   await expect
     .poll(async () =>
@@ -217,4 +235,32 @@ test('move an item into a category', async ({ page }) => {
       }),
     )
     .toContain('Banana');
+});
+
+test('set a category color that persists', async ({ page }) => {
+  await login(page);
+  const listName = `Color ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Palette');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Palette', exact: true })).toBeVisible();
+
+  await page.getByLabel('Change color of category “Palette”').click();
+  await page.getByRole('button', { name: 'Set color #3b82f6' }).click();
+
+  const dot = page
+    .locator('.panel', { has: page.getByRole('button', { name: 'Palette', exact: true }) })
+    .locator('.color-dot');
+  await expect
+    .poll(async () => dot.evaluate((el) => getComputedStyle(el).backgroundColor))
+    .toBe('rgb(59, 130, 246)');
+
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Palette', exact: true })).toBeVisible();
+  await expect
+    .poll(async () => dot.evaluate((el) => getComputedStyle(el).backgroundColor))
+    .toBe('rgb(59, 130, 246)');
 });

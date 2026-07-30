@@ -15,6 +15,13 @@
       "when": 1785407943393,
       "tag": "0001_wide_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785418415709,
+      "tag": "0002_bright_blazing_skull",
+      "breakpoints": true
     }
   ]
 }

@@ -134,6 +134,7 @@ export const categories = pgTable(
       .notNull()
       .references(() => lists.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    color: text('color'),
     position: text('position').notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

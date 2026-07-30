@@ -424,6 +424,13 @@ select {
   gap: var(--space-1);
 }
 
+/* A button sitting beside a text input in a form row (e.g. Invite) should match
+   the input's height so their tops and bottoms line up. Buttons force
+   line-height: 1, so restore the inherited line-height for these. */
+.field-action {
+  line-height: inherit;
+}
+
 label {
   display: block;
   font-size: 0.82rem;
@@ -783,20 +790,79 @@ label {
   align-items: center;
   gap: var(--space-2);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+}
+
+.panel__title > button.ghost {
+  font-size: inherit;
+  font-weight: 700;
+  color: var(--text);
+  padding: 0.15rem 0.4rem;
 }
 
 .panel__title-input {
   width: auto;
   max-width: 220px;
   padding: 0.3rem 0.5rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
 .panel__count {
+  line-height: 1;
   color: var(--text-subtle);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
+}
+
+.panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.color-dot {
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-strong);
+}
+
+.color-picker__panel {
+  width: max-content;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.color-swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  transition: transform 0.1s ease;
+}
+.color-swatch:hover {
+  transform: scale(1.12);
+}
+.color-swatch[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--text);
+}
+.color-swatch--none {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 1px),
+      var(--danger) calc(50% - 1px),
+      var(--danger) calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    var(--surface);
 }
 
 .panel__body {
