@@ -62,6 +62,7 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
       .returning();
     const list = rows[0];
     if (!list) return reply.code(404).send({ error: 'List not found' });
+    await app.hub.publishSnapshot(request.params.id);
     return reply.send({ list: toListSummary(list, role) });
   });
 
@@ -74,6 +75,7 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(403).send({ error: 'Only the owner can delete the list' });
     }
     await db.delete(lists).where(eq(lists.id, request.params.id));
+    app.hub.publishDeleted(request.params.id);
     await writeAudit(db, {
       actorId: user.id,
       action: 'list.delete',

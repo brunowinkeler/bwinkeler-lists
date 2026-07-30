@@ -12,6 +12,10 @@ import { registerItemRoutes } from './modules/items/routes.js';
 import { registerListRoutes } from './modules/lists/routes.js';
 import { registerNotificationRoutes } from './modules/notifications/routes.js';
 import { registerSharingRoutes } from './modules/sharing/routes.js';
+import websocket from '@fastify/websocket';
+import { registerIdempotency } from './http/idempotency.js';
+import { RealtimeHub } from './realtime/hub.js';
+import { registerWebSocketRoutes } from './realtime/ws-routes.js';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -29,11 +33,13 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
 
   app.decorate('config', config);
   app.decorate('db', db);
+  app.decorate('hub', new RealtimeHub(db));
   app.decorateRequest('user', null);
 
   await app.register(helmet);
   await app.register(cookie);
   await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+  await app.register(websocket);
 
   // Resolve the session (only when a cookie is present) and make sure API
   // clients always have a CSRF cookie to echo back.
@@ -56,6 +62,8 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
     }
   });
 
+  registerIdempotency(app);
+
   await app.register(registerHealthRoutes);
   await app.register(registerAuthRoutes, { prefix: '/api/auth' });
   await app.register(
@@ -67,6 +75,7 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
     },
     { prefix: '/api' },
   );
+  await app.register(registerWebSocketRoutes);
 
   return app;
 }

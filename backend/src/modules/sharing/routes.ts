@@ -142,6 +142,7 @@ export async function registerSharingRoutes(app: FastifyInstance): Promise<void>
       targetId: invitation.listId,
       metadata: { invitationId: invitation.id },
     });
+    await app.hub.publishSnapshot(invitation.listId);
     return reply.code(204).send();
   });
 
@@ -229,8 +230,10 @@ export async function registerSharingRoutes(app: FastifyInstance): Promise<void>
         targetId: listId,
         metadata: { removedUserId: userId },
       });
-      // The removed member's active WebSocket subscriptions are closed by the
-      // real-time layer (added in the WebSocket phase).
+      // The removed member's active WebSocket subscriptions are closed here so
+      // they immediately stop receiving updates for this list.
+      app.hub.revokeUser(listId, userId);
+      await app.hub.publishSnapshot(listId);
       return reply.code(204).send();
     },
   );

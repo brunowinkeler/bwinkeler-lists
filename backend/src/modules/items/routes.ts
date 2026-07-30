@@ -54,6 +54,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     const item = rows[0];
     if (!item) return reply.code(500).send({ error: 'Failed to create item' });
     await touchList(db, listId);
+    await app.hub.publishSnapshot(listId);
 
     if (item.assigneeId && item.assigneeId !== user.id) {
       await createNotification(db, item.assigneeId, 'task_assignment', {
@@ -104,6 +105,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     const item = rows[0];
     if (!item) return reply.code(404).send({ error: 'Item not found' });
     await touchList(db, existing.listId);
+    await app.hub.publishSnapshot(existing.listId);
 
     if (
       input.assigneeId &&
@@ -156,6 +158,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     const item = rows[0];
     if (!item) return reply.code(404).send({ error: 'Item not found' });
     await touchList(db, existing.listId);
+    await app.hub.publishSnapshot(existing.listId);
     return reply.send({ item: toItemDto(item) });
   });
 
@@ -175,6 +178,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     }
     await db.delete(items).where(eq(items.id, id));
     await touchList(db, existing.listId);
+    await app.hub.publishSnapshot(existing.listId);
     return reply.code(204).send();
   });
 }
