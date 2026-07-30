@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../../lib/api';
 import { BrandMark } from '../../components/BrandMark';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { APP_NAME, APP_TAGLINE } from '../../config/brand';
 import { useLogin } from './session';
 
@@ -25,6 +26,9 @@ export function LoginPage() {
 
   return (
     <main className="auth">
+      <div className="auth__toggle">
+        <ThemeToggle />
+      </div>
       <div className="auth__card">
         <div className="auth__brand">
           <span className="brand">

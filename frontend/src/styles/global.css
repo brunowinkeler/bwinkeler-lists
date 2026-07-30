@@ -58,41 +58,42 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0d13;
-    --bg-grad:
-      radial-gradient(1200px 600px at 100% -10%, #1a1d3a 0%, transparent 60%),
-      radial-gradient(900px 500px at -10% 0%, #0f2233 0%, transparent 55%);
-    --surface: #14171f;
-    --surface-2: #1a1e29;
-    --surface-hover: #1d222e;
-    --border: #262b38;
-    --border-strong: #333a4a;
-    --text: #e8eaf0;
-    --text-muted: #9aa1b1;
-    --text-subtle: #6d7486;
+/* Dark theme is applied via a data-theme attribute set by the app (and by an
+   inline no-flash script in index.html that resolves the system preference on
+   first paint), so users can override it with the header theme toggle. */
+:root[data-theme='dark'] {
+  --bg: #0b0d13;
+  --bg-grad:
+    radial-gradient(1200px 600px at 100% -10%, #1a1d3a 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 0%, #0f2233 0%, transparent 55%);
+  --surface: #14171f;
+  --surface-2: #1a1e29;
+  --surface-hover: #1d222e;
+  --border: #262b38;
+  --border-strong: #333a4a;
+  --text: #e8eaf0;
+  --text-muted: #9aa1b1;
+  --text-subtle: #6d7486;
 
-    --primary: #818cf8;
-    --primary-hover: #a5b0ff;
-    --primary-contrast: #0b0d13;
-    --primary-soft: #1e2140;
-    --primary-ring: rgba(129, 140, 248, 0.35);
+  --primary: #818cf8;
+  --primary-hover: #a5b0ff;
+  --primary-contrast: #0b0d13;
+  --primary-soft: #1e2140;
+  --primary-ring: rgba(129, 140, 248, 0.35);
 
-    --danger: #f87171;
-    --danger-hover: #fca5a5;
-    --danger-soft: #2a1618;
-    --success: #4ade80;
-    --success-soft: #12241a;
-    --warning: #fbbf24;
-    --warning-soft: #241c10;
+  --danger: #f87171;
+  --danger-hover: #fca5a5;
+  --danger-soft: #2a1618;
+  --success: #4ade80;
+  --success-soft: #12241a;
+  --warning: #fbbf24;
+  --warning-soft: #241c10;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
 
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 /* --------------------------------------------------------------------------
@@ -732,6 +733,12 @@ label {
 .auth__card {
   width: 100%;
   max-width: 380px;
+}
+
+.auth__toggle {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
 }
 
 .auth__brand {
