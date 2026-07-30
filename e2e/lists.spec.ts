@@ -54,3 +54,35 @@ test('realtime: a second browser context sees a newly added item', async ({ brow
   await contextA.close();
   await contextB.close();
 });
+
+test('create a category and see it as a panel', async ({ page }) => {
+  await login(page);
+  const listName = `Cat ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Produce');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Produce', exact: true })).toBeVisible();
+});
+
+test('duplicate a list copies its items', async ({ page }) => {
+  await login(page);
+  const listName = `Dup ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New item title').fill('Copy me');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('Copy me');
+
+  await page.getByRole('button', { name: 'Duplicate' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Duplicate list' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Duplicate' }).click();
+
+  await expect(page.getByRole('heading', { name: `${listName} (copy)` })).toBeVisible();
+  await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('Copy me');
+});
