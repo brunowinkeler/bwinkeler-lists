@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import {
   createListInputSchema,
   duplicateListInputSchema,
+  pinListInputSchema,
   renameListInputSchema,
 } from '@bwinkeler-lists/shared';
 import { getSessionUser } from '../../auth/guards.js';
@@ -18,12 +19,14 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
     const user = getSessionUser(request, reply);
     if (!user) return;
     const rows = await db
-      .select({ list: lists, role: listMembers.role })
+      .select({ list: lists, role: listMembers.role, pinned: listMembers.pinned })
       .from(listMembers)
       .innerJoin(lists, eq(lists.id, listMembers.listId))
       .where(eq(listMembers.userId, user.id))
       .orderBy(asc(lists.createdAt));
-    return reply.send({ lists: rows.map((row) => toListSummary(row.list, row.role)) });
+    return reply.send({
+      lists: rows.map((row) => toListSummary(row.list, row.role, row.pinned)),
+    });
   });
 
   app.post('/lists', async (request, reply) => {
@@ -90,6 +93,26 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
     if (!list) return reply.code(404).send({ error: 'List not found' });
     await app.hub.publishSnapshot(request.params.id);
     return reply.send({ list: toListSummary(list, role) });
+  });
+
+  app.patch<{ Params: { id: string } }>('/lists/:id/pin', async (request, reply) => {
+    const user = getSessionUser(request, reply);
+    if (!user) return;
+    const role = await getListRole(db, request.params.id, user.id);
+    if (!role) return reply.code(404).send({ error: 'List not found' });
+    const parsed = pinListInputSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
+    const members = await db
+      .update(listMembers)
+      .set({ pinned: parsed.data.pinned })
+      .where(and(eq(listMembers.listId, request.params.id), eq(listMembers.userId, user.id)))
+      .returning();
+    const member = members[0];
+    if (!member) return reply.code(404).send({ error: 'List not found' });
+    const listRows = await db.select().from(lists).where(eq(lists.id, request.params.id)).limit(1);
+    const list = listRows[0];
+    if (!list) return reply.code(404).send({ error: 'List not found' });
+    return reply.send({ list: toListSummary(list, role, member.pinned) });
   });
 
   app.delete<{ Params: { id: string } }>('/lists/:id', async (request, reply) => {

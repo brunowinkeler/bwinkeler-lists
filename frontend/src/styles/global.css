@@ -280,6 +280,15 @@ button,
     transform 0.05s ease;
 }
 
+/* Icons inside text buttons render with no intrinsic size otherwise, which
+   collapses them to 0px and shifts the label off-centre. */
+button svg,
+.btn svg {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+
 button:hover,
 .btn:hover {
   background: var(--surface-hover);
@@ -626,6 +635,52 @@ label {
   letter-spacing: -0.01em;
 }
 
+.lists-section__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.list-tile-wrap {
+  position: relative;
+}
+
+.list-tile-wrap .list-tile {
+  padding-right: 3rem;
+}
+
+.list-tile__pin {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  width: 2rem;
+  height: 2rem;
+  color: var(--text-subtle);
+  opacity: 0.6;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease,
+    background-color 0.12s ease;
+}
+.list-tile-wrap:hover .list-tile__pin,
+.list-tile__pin:focus-visible {
+  opacity: 1;
+}
+.list-tile__pin:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.list-tile__pin.is-pinned {
+  opacity: 1;
+  color: var(--primary);
+}
+.list-tile__pin.is-pinned svg {
+  fill: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
 /* --------------------------------------------------------------------------
    Items (list detail) + drag & drop
    -------------------------------------------------------------------------- */
@@ -650,9 +705,9 @@ label {
 }
 
 .item.is-dragging {
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary);
-  opacity: 0.95;
+  opacity: 0.4;
+  box-shadow: none;
+  border-style: dashed;
 }
 
 .item.is-done {
@@ -770,9 +825,25 @@ label {
 }
 
 .panel.is-dragging {
-  opacity: 0.9;
-  border-color: var(--primary);
+  opacity: 0.4;
+}
+
+/* Floating clone shown while dragging (DragOverlay), so the real item/panel can
+   stay put as a ghost placeholder and the drop settles without a flicker. */
+.drag-overlay {
+  cursor: grabbing;
   box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+  opacity: 1;
+}
+.drag-overlay__title {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .panel__header {

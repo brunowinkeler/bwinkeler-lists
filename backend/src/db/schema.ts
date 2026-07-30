@@ -93,6 +93,7 @@ export const listMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     role: memberRole('role').notNull(),
+    pinned: boolean('pinned').notNull().default(false),
     createdAt: createdAt(),
   },
   (table) => [

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import type { ListKind } from '@bwinkeler-lists/shared';
-import { createList, fetchLists, listsKey } from './api';
+import type { ListKind, ListSummaryDto } from '@bwinkeler-lists/shared';
+import { createList, fetchLists, listsKey, setListPinned } from './api';
 import { InvitationsInbox } from '../sharing/InvitationsInbox';
-import { PlusIcon } from '../../components/icons';
+import { PinIcon, PlusIcon } from '../../components/icons';
 
 export function ListsOverviewPage() {
   const queryClient = useQueryClient();
@@ -22,11 +22,44 @@ export function ListsOverviewPage() {
     },
   });
 
+  const pin = useMutation({
+    mutationFn: (vars: { id: string; pinned: boolean }) => setListPinned(vars.id, vars.pinned),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listsKey }),
+  });
+
   function onCreate(event: FormEvent): void {
     event.preventDefault();
     if (name.trim().length > 0) {
       create.mutate();
     }
+  }
+
+  const allLists = lists.data?.lists ?? [];
+  const pinnedLists = allLists.filter((list) => list.pinned);
+  const otherLists = allLists.filter((list) => !list.pinned);
+
+  function renderTile(list: ListSummaryDto) {
+    return (
+      <li key={list.id} className="list-tile-wrap">
+        <Link to={`/lists/${list.id}`} className="list-tile">
+          <span className="list-tile__name">{list.name}</span>
+          <span className="row">
+            <span className="badge accent">{list.kind}</span>
+            <span className="badge">{list.role}</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          className={`icon-btn list-tile__pin${list.pinned ? ' is-pinned' : ''}`}
+          aria-label={list.pinned ? `Unpin “${list.name}”` : `Pin “${list.name}” to top`}
+          aria-pressed={list.pinned}
+          title={list.pinned ? 'Unpin' : 'Pin to top'}
+          onClick={() => pin.mutate({ id: list.id, pinned: !list.pinned })}
+        >
+          <PinIcon />
+        </button>
+      </li>
+    );
   }
 
   return (
@@ -77,20 +110,17 @@ export function ListsOverviewPage() {
             <p className="subtle">Create your first list above to get started.</p>
           </div>
         )}
-        {lists.data && lists.data.lists.length > 0 && (
-          <ul className="list-grid">
-            {lists.data.lists.map((list) => (
-              <li key={list.id}>
-                <Link to={`/lists/${list.id}`} className="list-tile">
-                  <span className="list-tile__name">{list.name}</span>
-                  <span className="row">
-                    <span className="badge accent">{list.kind}</span>
-                    <span className="badge">{list.role}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {pinnedLists.length > 0 && (
+          <section className="stack">
+            <h2 className="lists-section__title">Pinned</h2>
+            <ul className="list-grid">{pinnedLists.map(renderTile)}</ul>
+          </section>
+        )}
+        {otherLists.length > 0 && (
+          <section className="stack">
+            {pinnedLists.length > 0 && <h2 className="lists-section__title">All lists</h2>}
+            <ul className="list-grid">{otherLists.map(renderTile)}</ul>
+          </section>
         )}
       </section>
     </main>

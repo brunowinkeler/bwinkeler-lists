@@ -34,6 +34,10 @@ export function deleteList(id: string): Promise<void> {
   return apiSend('DELETE', `/lists/${id}`);
 }
 
+export function setListPinned(id: string, pinned: boolean): Promise<{ list: ListSummaryDto }> {
+  return apiSend('PATCH', `/lists/${id}/pin`, { pinned });
+}
+
 export function createItem(listId: string, input: CreateItemInput): Promise<{ item: ItemDto }> {
   return apiSend('POST', `/lists/${listId}/items`, input);
 }

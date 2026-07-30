@@ -104,6 +104,11 @@ export const duplicateListInputSchema = z.object({
 });
 export type DuplicateListInput = z.infer<typeof duplicateListInputSchema>;
 
+export const pinListInputSchema = z.object({
+  pinned: z.boolean(),
+});
+export type PinListInput = z.infer<typeof pinListInputSchema>;
+
 export const inviteInputSchema = z.object({
   email: emailSchema,
 });
@@ -115,6 +120,7 @@ export interface ListSummaryDto {
   kind: ListKind;
   role: MemberRole;
   ownerId: string;
+  pinned: boolean;
   version: number;
   createdAt: string;
   updatedAt: string;

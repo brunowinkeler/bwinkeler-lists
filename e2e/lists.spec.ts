@@ -170,7 +170,7 @@ test('reorder categories by dragging', async ({ page }) => {
         }),
       ),
     )
-    .toEqual(['Uncategorized', 'Beta', 'Alpha']);
+    .toEqual(['Beta', 'Alpha', 'Uncategorized']);
 });
 
 test('reorder items within a bucket', async ({ page }) => {
@@ -263,4 +263,26 @@ test('set a category color that persists', async ({ page }) => {
   await expect
     .poll(async () => dot.evaluate((el) => getComputedStyle(el).backgroundColor))
     .toBe('rgb(59, 130, 246)');
+});
+
+test('pinning a list moves it to the top', async ({ page }) => {
+  await login(page);
+  const name = `Pin ${Date.now()}`;
+  await page.getByLabel('New list name').fill(name);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name })).toBeVisible();
+  await page.goto('/');
+
+  const tile = page.locator('.list-tile-wrap', { has: page.getByText(name, { exact: true }) });
+  await tile.hover();
+  await tile.getByRole('button', { name: /to top/ }).click();
+
+  const pinnedSection = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Pinned' }) });
+  await expect(pinnedSection.getByText(name, { exact: true })).toBeVisible();
+
+  // Persists across reload.
+  await page.reload();
+  await expect(pinnedSection.getByText(name, { exact: true })).toBeVisible();
 });

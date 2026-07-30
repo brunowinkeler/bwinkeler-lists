@@ -41,13 +41,18 @@ export function toCategoryDto(row: typeof categories.$inferSelect): CategoryDto 
   };
 }
 
-export function toListSummary(row: typeof lists.$inferSelect, role: MemberRole): ListSummaryDto {
+export function toListSummary(
+  row: typeof lists.$inferSelect,
+  role: MemberRole,
+  pinned = false,
+): ListSummaryDto {
   return {
     id: row.id,
     name: row.name,
     kind: row.kind,
     role,
     ownerId: row.ownerId,
+    pinned,
     version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
