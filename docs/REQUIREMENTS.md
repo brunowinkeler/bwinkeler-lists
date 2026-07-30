@@ -1,14 +1,14 @@
 # Listly — Requirements baseline
 
-| Field                 | Value                                     |
-| --------------------- | ----------------------------------------- |
-| Document              | `BW-LISTS-REQ-001`                        |
-| Version               | 1.1                                       |
-| Status                | Implemented (v1)                          |
-| Last review           | 2026-07-30                                |
-| Owner                 | Bruno Winkeler                            |
-| Applies to            | `bwinkeler-lists` (`service_id: lists`)   |
-| Platform architecture | `BW-PLATFORM-ARCH-001` v1.3               |
+| Field                 | Value                                   |
+| --------------------- | --------------------------------------- |
+| Document              | `BW-LISTS-REQ-001`                      |
+| Version               | 1.1                                     |
+| Status                | Implemented (v1)                        |
+| Last review           | 2026-07-30                              |
+| Owner                 | Bruno Winkeler                          |
+| Applies to            | `bwinkeler-lists` (`service_id: lists`) |
+| Platform architecture | `BW-PLATFORM-ARCH-001` v1.3             |
 
 Listly is a collaborative lists web application on the `bwinkeler.com` platform.
 Authenticated users create lists of items, organize them into per-list categories,
@@ -34,12 +34,12 @@ object storage, and invite-only accounts.
 
 ### 1.1 Objectives
 
-| ID  | Objective                                                                                    |
-| --- | -------------------------------------------------------------------------------------------- |
-| O1  | Let a user create and manage lists of items in both a simple kind and a richer task kind.    |
-| O2  | Let a list Owner control who collaborates on each list.                                      |
-| O3  | Reflect a shared list's changes to all active collaborators in near real time.               |
-| O4  | Keep list data private to its members, reliable, and portable per the platform architecture. |
+| ID  | Objective                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------- |
+| O1  | Let a user create and manage lists of items in both a simple kind and a richer task kind.         |
+| O2  | Let a list Owner control who collaborates on each list.                                           |
+| O3  | Reflect a shared list's changes to all active collaborators in near real time.                    |
+| O4  | Keep list data private to its members, reliable, and portable per the platform architecture.      |
 | O5  | Help users organize and reach lists at scale: per-list categories, list duplication, and pinning. |
 
 ### 1.2 Identity and publication
@@ -71,25 +71,25 @@ phrasing), and `../../ARCHITECTURE.md` v1.3 (binding platform constraints).
 General software context — no safety, medical, or other regulated regime is
 assumed.
 
-| ID  | Assumption                                                                                                                              |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| A1  | Single generic application with list kinds `simple` and `task`.                                                                         |
-| A2  | Membership roles: Owner and Editor only (no Viewer).                                                                                    |
-| A3  | Only the Owner manages membership, deletes a list, and sets its kind; an Editor may rename a list and perform all item operations.      |
-| A4  | Task items add assignee, due date, and notes; manual ordering applies to all kinds. No priority, labels, subtasks, or attachments.      |
-| A5  | Concurrency resolved by last-write-wins per field, using a server-authoritative version or timestamp.                                   |
-| A6  | Online-only, optimistic UI, full resync on reconnect.                                                                                   |
-| A7  | No presence or typing indicators.                                                                                                       |
-| A8  | Real-time propagation p95 ≤ 2 s.                                                                                                        |
-| A9  | In-app notifications only for two events (list invitation, task assignment); no email or push.                                          |
-| A10 | English-only UI, responsive web only.                                                                                                   |
-| A11 | Invite-only accounts; a share target is identified by an existing account's email and must accept the invitation before gaining access. |
-| A12 | Single backend replica, no Redis, no object storage.                                                                                    |
-| A13 | Family scale (fewer than 50 users); no special regulatory regime.                                                                       |
-| A14 | Implementation-independent; no fixed language or framework constraint recorded.                                                         |
-| A15 | Items may belong to at most one per-list category; categories are managed per list, may have a color, and have a manual order; items without a category appear in an "Uncategorized" group shown last. |
+| ID  | Assumption                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | Single generic application with list kinds `simple` and `task`.                                                                                                                                                   |
+| A2  | Membership roles: Owner and Editor only (no Viewer).                                                                                                                                                              |
+| A3  | Only the Owner manages membership, deletes a list, and sets its kind; an Editor may rename a list and perform all item operations.                                                                                |
+| A4  | Task items add assignee, due date, and notes; manual ordering applies to all kinds. No priority, labels, subtasks, or attachments.                                                                                |
+| A5  | Concurrency resolved by last-write-wins per field, using a server-authoritative version or timestamp.                                                                                                             |
+| A6  | Online-only, optimistic UI, full resync on reconnect.                                                                                                                                                             |
+| A7  | No presence or typing indicators.                                                                                                                                                                                 |
+| A8  | Real-time propagation p95 ≤ 2 s.                                                                                                                                                                                  |
+| A9  | In-app notifications only for two events (list invitation, task assignment); no email or push.                                                                                                                    |
+| A10 | English-only UI, responsive web only.                                                                                                                                                                             |
+| A11 | Invite-only accounts; a share target is identified by an existing account's email and must accept the invitation before gaining access.                                                                           |
+| A12 | Single backend replica, no Redis, no object storage.                                                                                                                                                              |
+| A13 | Family scale (fewer than 50 users); no special regulatory regime.                                                                                                                                                 |
+| A14 | Implementation-independent; no fixed language or framework constraint recorded.                                                                                                                                   |
+| A15 | Items may belong to at most one per-list category; categories are managed per list, may have a color, and have a manual order; items without a category appear in an "Uncategorized" group shown last.            |
 | A16 | A user with access to a list may duplicate it; options exclude completed items or reset copied items to open; the copy is owned by the duplicating user, copies the categories, and does not copy item assignees. |
-| A17 | A user may pin lists; pinned lists appear first in that user's own overview. Pinning is per user.                                        |
+| A17 | A user may pin lists; pinned lists appear first in that user's own overview. Pinning is per user.                                                                                                                 |
 
 ---
 
@@ -109,19 +109,19 @@ assumed.
 
 ### 3.2 Lists (LST-LST)
 
-| ID          | Requirement                                                                                                                        | Trace           | Verify |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------ |
-| LST-LST-001 | The system shall allow an authenticated user to create a list with a non-empty name and a kind chosen from the supported kinds.    | O1              | T      |
-| LST-LST-002 | The system shall support the list kinds `simple` and `task` in v1, where `simple` serves shopping, daily-activity, and goal lists. | O1; A1          | T      |
-| LST-LST-003 | The system shall assign the creating user as the single Owner of a new list.                                                       | O2              | T      |
-| LST-LST-004 | The system shall treat a list's kind as immutable after creation.                                                                  | A1              | T      |
-| LST-LST-005 | The system shall allow a user to view all and only the lists they own or of which they are a member.                               | O4; LST-SEC-001 | T      |
-| LST-LST-006 | The system shall allow an Owner or an Editor of a list to rename it.                                                               | A3              | T      |
-| LST-LST-007 | Only the Owner shall be able to delete a list.                                                                                     | A3              | T      |
-| LST-LST-008 | When a list is deleted, the system shall remove all of that list's items, memberships, and pending invitations.                    | O4              | T      |
-| LST-LST-009 | The system shall allow a user to own and be a member of multiple lists simultaneously.                                             | O1              | T      |
-| LST-LST-010 | The system shall allow a user with access to a list to duplicate it, copying its categories and items, with options to exclude completed items or to reset copied items to open; the copy shall be owned by the duplicating user and shall not copy item assignees. | O5; A16 | T |
-| LST-LST-011 | The system shall allow a member to pin or unpin a list for their own account and shall present that user's pinned lists before their other lists. | O5; A17 | T |
+| ID          | Requirement                                                                                                                                                                                                                                                         | Trace           | Verify |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ------ |
+| LST-LST-001 | The system shall allow an authenticated user to create a list with a non-empty name and a kind chosen from the supported kinds.                                                                                                                                     | O1              | T      |
+| LST-LST-002 | The system shall support the list kinds `simple` and `task` in v1, where `simple` serves shopping, daily-activity, and goal lists.                                                                                                                                  | O1; A1          | T      |
+| LST-LST-003 | The system shall assign the creating user as the single Owner of a new list.                                                                                                                                                                                        | O2              | T      |
+| LST-LST-004 | The system shall treat a list's kind as immutable after creation.                                                                                                                                                                                                   | A1              | T      |
+| LST-LST-005 | The system shall allow a user to view all and only the lists they own or of which they are a member.                                                                                                                                                                | O4; LST-SEC-001 | T      |
+| LST-LST-006 | The system shall allow an Owner or an Editor of a list to rename it.                                                                                                                                                                                                | A3              | T      |
+| LST-LST-007 | Only the Owner shall be able to delete a list.                                                                                                                                                                                                                      | A3              | T      |
+| LST-LST-008 | When a list is deleted, the system shall remove all of that list's items, memberships, and pending invitations.                                                                                                                                                     | O4              | T      |
+| LST-LST-009 | The system shall allow a user to own and be a member of multiple lists simultaneously.                                                                                                                                                                              | O1              | T      |
+| LST-LST-010 | The system shall allow a user with access to a list to duplicate it, copying its categories and items, with options to exclude completed items or to reset copied items to open; the copy shall be owned by the duplicating user and shall not copy item assignees. | O5; A16         | T      |
+| LST-LST-011 | The system shall allow a member to pin or unpin a list for their own account and shall present that user's pinned lists before their other lists.                                                                                                                   | O5; A17         | T      |
 
 ### 3.3 Items (LST-ITM)
 
@@ -141,16 +141,16 @@ assumed.
 
 ### 3.4 Categories (LST-CAT)
 
-| ID          | Requirement                                                                                                                                          | Trace   | Verify |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
-| LST-CAT-001 | The system shall allow an Owner or Editor to create a category with a non-empty name within a list.                                                | O5; A15 | T      |
-| LST-CAT-002 | The system shall allow an Owner or Editor to rename a category.                                                                                     | O5; A15 | T      |
-| LST-CAT-003 | When a category is deleted, the system shall move its items to the Uncategorized group rather than deleting them.                                   | O5; A15 | T      |
-| LST-CAT-004 | The system shall allow an Owner or Editor to set the manual order of categories and shall persist that order.                                       | O5; A15 | T      |
-| LST-CAT-005 | The system shall allow an Owner or Editor to set or clear a category's color from a defined palette.                                                | O5; A15 | T      |
+| ID          | Requirement                                                                                                                                           | Trace   | Verify |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| LST-CAT-001 | The system shall allow an Owner or Editor to create a category with a non-empty name within a list.                                                   | O5; A15 | T      |
+| LST-CAT-002 | The system shall allow an Owner or Editor to rename a category.                                                                                       | O5; A15 | T      |
+| LST-CAT-003 | When a category is deleted, the system shall move its items to the Uncategorized group rather than deleting them.                                     | O5; A15 | T      |
+| LST-CAT-004 | The system shall allow an Owner or Editor to set the manual order of categories and shall persist that order.                                         | O5; A15 | T      |
+| LST-CAT-005 | The system shall allow an Owner or Editor to set or clear a category's color from a defined palette.                                                  | O5; A15 | T      |
 | LST-CAT-006 | The system shall allow an Owner or Editor to place an item in at most one category or leave it uncategorized, and to move an item between categories. | O5; A15 | T      |
-| LST-CAT-007 | The system shall display the Uncategorized group after all categories and shall preserve a manual item order within each group.                     | O5; A15 | T      |
-| LST-CAT-008 | The system shall scope categories to a single list and make them accessible only to that list's members.                                           | O4; A15 | T      |
+| LST-CAT-007 | The system shall display the Uncategorized group after all categories and shall preserve a manual item order within each group.                       | O5; A15 | T      |
+| LST-CAT-008 | The system shall scope categories to a single list and make them accessible only to that list's members.                                              | O4; A15 | T      |
 
 ### 3.5 Sharing and authorization (LST-SHR)
 
@@ -170,19 +170,19 @@ assumed.
 
 ### 3.6 Real-time collaboration (LST-RTC)
 
-| ID          | Requirement                                                                                                                                                                                                                                | Trace       | Verify |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- | ------ |
+| ID          | Requirement                                                                                                                                                                                                                                                                                                            | Trace       | Verify |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------ |
 | LST-RTC-001 | When an Owner or Editor changes the content of a shared list (item add, edit, status change, delete, reorder, move between categories, task-field change; category add, rename, delete, reorder, or recolor; or membership change), the system shall propagate the change to all other connected members of that list. | O3          | T      |
-| LST-RTC-002 | The system shall deliver real-time changes to connected members with a 95th-percentile end-to-end propagation time ≤ 2 s under the expected concurrent load on a single backend instance.                                                  | A8          | T      |
-| LST-RTC-003 | The system shall provide the real-time channel over an authenticated WebSocket at path `/ws`, on the same origin as the application, using wss.                                                                                            | §9.4, §10.3 | T      |
-| LST-RTC-004 | When a client establishes or re-establishes a subscription to a list, the system shall send the authoritative current state of that list.                                                                                                  | O3; §12.4   | T      |
-| LST-RTC-005 | The system shall resolve concurrent edits to the same item field using last-write-wins based on a server-assigned version or timestamp, so that all connected clients converge to identical state.                                         | A5          | T      |
-| LST-RTC-006 | After a disconnection, the client shall reconnect using backoff with jitter and shall perform a full state resynchronization on reconnect.                                                                                                 | A6; §12.4   | D      |
-| LST-RTC-007 | The system shall authorize each real-time message against the sender's role and membership for the target list.                                                                                                                            | §12.4       | T      |
-| LST-RTC-008 | The system shall treat mutating real-time commands as idempotent via a client-provided idempotency key, so that a retried command is applied at most once.                                                                                 | §12.4       | T      |
-| LST-RTC-009 | The system shall persist a content change to PostgreSQL before or atomically with broadcasting it, so that no acknowledged change is lost on backend restart.                                                                              | §12.1       | T      |
-| LST-RTC-010 | While the real-time channel is unavailable, the system shall remain usable for reading and editing over HTTP and shall reconcile state when the channel is restored.                                                                       | A6          | D      |
-| LST-RTC-011 | The client may apply a change locally before server confirmation and shall reconcile to the server's authoritative state when they differ.                                                                                                 | A6          | D      |
+| LST-RTC-002 | The system shall deliver real-time changes to connected members with a 95th-percentile end-to-end propagation time ≤ 2 s under the expected concurrent load on a single backend instance.                                                                                                                              | A8          | T      |
+| LST-RTC-003 | The system shall provide the real-time channel over an authenticated WebSocket at path `/ws`, on the same origin as the application, using wss.                                                                                                                                                                        | §9.4, §10.3 | T      |
+| LST-RTC-004 | When a client establishes or re-establishes a subscription to a list, the system shall send the authoritative current state of that list.                                                                                                                                                                              | O3; §12.4   | T      |
+| LST-RTC-005 | The system shall resolve concurrent edits to the same item field using last-write-wins based on a server-assigned version or timestamp, so that all connected clients converge to identical state.                                                                                                                     | A5          | T      |
+| LST-RTC-006 | After a disconnection, the client shall reconnect using backoff with jitter and shall perform a full state resynchronization on reconnect.                                                                                                                                                                             | A6; §12.4   | D      |
+| LST-RTC-007 | The system shall authorize each real-time message against the sender's role and membership for the target list.                                                                                                                                                                                                        | §12.4       | T      |
+| LST-RTC-008 | The system shall treat mutating real-time commands as idempotent via a client-provided idempotency key, so that a retried command is applied at most once.                                                                                                                                                             | §12.4       | T      |
+| LST-RTC-009 | The system shall persist a content change to PostgreSQL before or atomically with broadcasting it, so that no acknowledged change is lost on backend restart.                                                                                                                                                          | §12.1       | T      |
+| LST-RTC-010 | While the real-time channel is unavailable, the system shall remain usable for reading and editing over HTTP and shall reconcile state when the channel is restored.                                                                                                                                                   | A6          | D      |
+| LST-RTC-011 | The client may apply a change locally before server confirmation and shall reconcile to the server's authoritative state when they differ.                                                                                                                                                                             | A6          | D      |
 
 ### 3.7 Notifications (LST-NTF)
 
@@ -195,14 +195,14 @@ assumed.
 
 ### 3.8 Data and persistence (LST-DAT)
 
-| ID          | Requirement                                                                                                                                                         | Trace   | Verify |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
-| LST-DAT-001 | The system shall persist all account, list, category, item, membership, invitation, notification, and session data in the application's PostgreSQL database `lists_db`.       | O4; §11 | I      |
-| LST-DAT-002 | The system shall treat PostgreSQL as the single source of truth for list state; the backend shall not hold list state that cannot be reconstructed from PostgreSQL. | §12.1   | A      |
-| LST-DAT-003 | The system shall manage all schema changes exclusively through versioned migrations.                                                                                | §11.6   | I      |
-| LST-DAT-004 | The runtime backend shall connect using the least-privilege `lists_runtime` role and shall not perform DDL.                                                         | §11.2   | A      |
-| LST-DAT-005 | The system shall not store permanent data in the container filesystem.                                                                                              | §14     | A      |
-| LST-DAT-006 | The backend shall retry its PostgreSQL connection with backoff and shall not rely on a fixed startup order.                                                         | §11.5   | T      |
+| ID          | Requirement                                                                                                                                                             | Trace   | Verify |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| LST-DAT-001 | The system shall persist all account, list, category, item, membership, invitation, notification, and session data in the application's PostgreSQL database `lists_db`. | O4; §11 | I      |
+| LST-DAT-002 | The system shall treat PostgreSQL as the single source of truth for list state; the backend shall not hold list state that cannot be reconstructed from PostgreSQL.     | §12.1   | A      |
+| LST-DAT-003 | The system shall manage all schema changes exclusively through versioned migrations.                                                                                    | §11.6   | I      |
+| LST-DAT-004 | The runtime backend shall connect using the least-privilege `lists_runtime` role and shall not perform DDL.                                                             | §11.2   | A      |
+| LST-DAT-005 | The system shall not store permanent data in the container filesystem.                                                                                                  | §14     | A      |
+| LST-DAT-006 | The backend shall retry its PostgreSQL connection with backoff and shall not rely on a fixed startup order.                                                             | §11.5   | T      |
 
 ### 3.9 Quality (LST-QUA) — ISO/IEC 25010
 
@@ -296,21 +296,22 @@ directly to architecture sections.
 
 ## 6. Decision log
 
-| ID     | Decision                                                                                                              |
-| ------ | --------------------------------------------------------------------------------------------------------------------- |
-| DEC-01 | One generic "lists" application with kinds `simple` and `task`, rather than separate apps per list type.              |
-| DEC-02 | Naming: `service_id` `lists`, domain `lists.bwinkeler.com`, repository `bwinkeler-lists`, Compose project `bw-lists`. |
-| DEC-03 | Membership roles limited to Owner and Editor.                                                                         |
-| DEC-04 | Only the Owner manages membership, deletes a list, and sets its kind; Editors may rename and edit content.            |
-| DEC-05 | Sharing is invite-to-accept, addressed to a registered account email.                                                 |
-| DEC-06 | Concurrency resolved by last-write-wins per field.                                                                    |
-| DEC-07 | Online-only with resync on reconnect; no presence or typing indicators.                                               |
-| DEC-08 | In-app notifications for two events — list invitation and task assignment; no email or push in v1.                    |
-| DEC-09 | Account deletion cascade-deletes owned lists; no ownership transfer.                                                  |
-| DEC-10 | English-only, responsive web only; implementation-independent.                                                        || DEC-11 | Items are organized into optional per-list categories (at most one per item), each with a color and a manual order; an Uncategorized group is always shown last. Multi-label tagging remains out of scope. |
+| ID     | Decision                                                                                                                                                                  |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DEC-01 | One generic "lists" application with kinds `simple` and `task`, rather than separate apps per list type.                                                                  |
+| DEC-02 | Naming: `service_id` `lists`, domain `lists.bwinkeler.com`, repository `bwinkeler-lists`, Compose project `bw-lists`.                                                     |
+| DEC-03 | Membership roles limited to Owner and Editor.                                                                                                                             |
+| DEC-04 | Only the Owner manages membership, deletes a list, and sets its kind; Editors may rename and edit content.                                                                |
+| DEC-05 | Sharing is invite-to-accept, addressed to a registered account email.                                                                                                     |
+| DEC-06 | Concurrency resolved by last-write-wins per field.                                                                                                                        |
+| DEC-07 | Online-only with resync on reconnect; no presence or typing indicators.                                                                                                   |
+| DEC-08 | In-app notifications for two events — list invitation and task assignment; no email or push in v1.                                                                        |
+| DEC-09 | Account deletion cascade-deletes owned lists; no ownership transfer.                                                                                                      |
+| DEC-10 | English-only, responsive web only; implementation-independent.                                                                                                            |     | DEC-11 | Items are organized into optional per-list categories (at most one per item), each with a color and a manual order; an Uncategorized group is always shown last. Multi-label tagging remains out of scope. |
 | DEC-12 | A list can be duplicated with options to exclude or reset completed items; the copy is owned by the duplicating user, copies the categories, and does not copy assignees. |
-| DEC-13 | Lists can be pinned per user to appear first in that user's overview.                                                |
-| DEC-14 | Product/display name is "Listly"; the platform identifiers (`service_id` `lists`, domain, repository, Compose project, database) are unchanged. |
+| DEC-13 | Lists can be pinned per user to appear first in that user's overview.                                                                                                     |
+| DEC-14 | Product/display name is "Listly"; the platform identifiers (`service_id` `lists`, domain, repository, Compose project, database) are unchanged.                           |
+
 ---
 
 ## 7. Deferred and future scope
