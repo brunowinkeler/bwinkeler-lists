@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ItemDto, ListKind, MemberDto } from '@bwinkeler-lists/shared';
@@ -34,14 +35,19 @@ export function CategoryPanel({
   onDelete,
 }: CategoryPanelProps) {
   const isUncategorized = categoryId === null;
-  const { setNodeRef, attributes, listeners, transform, transition, isOver, isDragging } =
-    useSortable({
-      id: columnId,
-      data: { type: 'category' },
-      // Uncategorized stays pinned (not draggable) but still accepts item drops.
-      disabled: isUncategorized ? { draggable: true, droppable: false } : false,
-    });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+  // The header is the sortable node used for category reordering; the body is a
+  // separate droppable that receives items. Keeping items OUT of the sortable
+  // node avoids nesting draggables (which stops item dragging from working).
+  const sortable = useSortable({
+    id: `cat-${columnId}`,
+    data: { type: 'category', columnId },
+    disabled: isUncategorized,
+  });
+  const drop = useDroppable({ id: columnId });
+  const style = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+  };
 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
@@ -61,19 +67,18 @@ export function CategoryPanel({
 
   return (
     <section
-      ref={setNodeRef}
       style={style}
-      className={`panel${isUncategorized ? ' panel--uncategorized' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`panel${isUncategorized ? ' panel--uncategorized' : ''}${sortable.isDragging ? ' is-dragging' : ''}`}
     >
-      <header className="panel__header">
+      <header ref={sortable.setNodeRef} className="panel__header">
         <span className="panel__title">
           {!isUncategorized && (
             <button
               type="button"
               className="drag-handle"
               aria-label={`Reorder category “${name}”`}
-              {...attributes}
-              {...listeners}
+              {...sortable.attributes}
+              {...sortable.listeners}
             >
               <GripIcon />
             </button>
@@ -114,7 +119,10 @@ export function CategoryPanel({
           </button>
         )}
       </header>
-      <div className={`panel__body${isOver && itemDragActive ? ' is-over' : ''}`}>
+      <div
+        ref={drop.setNodeRef}
+        className={`panel__body${drop.isOver && itemDragActive ? ' is-over' : ''}`}
+      >
         <SortableContext
           items={items.map((item) => item.id)}
           strategy={verticalListSortingStrategy}

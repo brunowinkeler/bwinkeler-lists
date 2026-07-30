@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function login(page: Page): Promise<void> {
   await page.goto('/login');
@@ -6,6 +6,18 @@ async function login(page: Page): Promise<void> {
   await page.getByLabel('Password').fill('dev-password-change-me');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { name: 'Your lists' })).toBeVisible();
+}
+
+async function dragOnto(page: Page, source: Locator, target: Locator): Promise<void> {
+  const from = await source.boundingBox();
+  const to = await target.boundingBox();
+  if (!from || !to) throw new Error('bounding box missing');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y - 8, { steps: 4 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 4, { steps: 4 });
+  await page.mouse.up();
 }
 
 test('create a list, add and complete an item, and persist across reload', async ({ page }) => {
@@ -141,4 +153,68 @@ test('reorder categories by dragging', async ({ page }) => {
       ),
     )
     .toEqual(['Uncategorized', 'Beta', 'Alpha']);
+});
+
+test('reorder items within a bucket', async ({ page }) => {
+  await login(page);
+  const listName = `ItemOrder ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New item title').fill('First');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(1);
+  await page.getByLabel('New item title').fill('Second');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
+
+  const handles = page.getByRole('button', { name: 'Drag to reorder' });
+  await dragOnto(page, handles.nth(1), handles.nth(0));
+
+  await expect
+    .poll(async () =>
+      page
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+    )
+    .toEqual(['Second', 'First']);
+});
+
+test('move an item into a category', async ({ page }) => {
+  await login(page);
+  const listName = `Move ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Fruit');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Fruit', exact: true })).toBeVisible();
+
+  await page.getByLabel('New item title').fill('Banana');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveValue('Banana');
+
+  const handle = page.getByRole('button', { name: 'Drag to reorder' }).first();
+  const fruitPanel = page.locator('.panel', {
+    has: page.getByRole('button', { name: 'Fruit', exact: true }),
+  });
+  await dragOnto(page, handle, fruitPanel.locator('.panel__empty'));
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const panels = Array.from(document.querySelectorAll('.panel'));
+        const fruit = panels.find((p) =>
+          p.querySelector('.panel__title')?.textContent?.includes('Fruit'),
+        );
+        return fruit
+          ? Array.from(fruit.querySelectorAll('input[aria-label="Item title"]')).map(
+              (i) => (i as HTMLInputElement).value,
+            )
+          : [];
+      }),
+    )
+    .toContain('Banana');
 });

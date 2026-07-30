@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
+  closestCenter,
+  getFirstCollision,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -190,6 +194,52 @@ export function ListPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  // Multi-container collision detection: categories collide only with other
+  // categories; items use the pointer and resolve container hits to the closest
+  // item inside, so both cross-category moves and in-category reordering work.
+  const collisionDetection = useCallback<CollisionDetection>(
+    (args) => {
+      const activeId = String(args.active.id);
+      // Category drag: collide only with the other category headers.
+      if (activeId.startsWith('cat-')) {
+        return closestCenter({
+          ...args,
+          droppableContainers: args.droppableContainers.filter((c) =>
+            String(c.id).startsWith('cat-'),
+          ),
+        });
+      }
+      // Item drag: ignore category headers and the item being dragged; use the
+      // pointer and resolve a bucket hit to the closest item inside it.
+      const itemArgs = {
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          (c) => String(c.id) !== activeId && !String(c.id).startsWith('cat-'),
+        ),
+      };
+      const pointerCollisions = pointerWithin(itemArgs);
+      const intersections =
+        pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(itemArgs);
+      const overId = getFirstCollision(intersections, 'id');
+      if (overId == null) return [];
+      const overIdStr = String(overId);
+      if (overIdStr in board) {
+        const itemIds = new Set((board[overIdStr] ?? []).map((item) => item.id));
+        if (itemIds.size > 0) {
+          const closest = closestCenter({
+            ...itemArgs,
+            droppableContainers: itemArgs.droppableContainers.filter(
+              (c) => String(c.id) !== overIdStr && itemIds.has(String(c.id)),
+            ),
+          });
+          if (closest.length > 0) return closest;
+        }
+      }
+      return [{ id: overId }];
+    },
+    [board],
+  );
+
   if (detail.isLoading) {
     return (
       <main className="container">
@@ -237,7 +287,7 @@ export function ListPage() {
 
   function onDragStart(event: DragStartEvent): void {
     draggingRef.current = true;
-    setActiveType(String(event.active.id) in board ? 'category' : 'item');
+    setActiveType(String(event.active.id).startsWith('cat-') ? 'category' : 'item');
   }
 
   function onDragCancel(): void {
@@ -246,15 +296,17 @@ export function ListPage() {
     resync();
   }
 
-  function handleCategoryDragEnd(activeId: string, overId: string): void {
+  function handleCategoryDragEnd(activeCatId: string, overCatId: string): void {
+    const activeColumnId = activeCatId.slice(4);
     const order = columns.filter((column) => column.categoryId).map((column) => column.id);
-    const oldIndex = order.indexOf(activeId);
+    const oldIndex = order.indexOf(activeColumnId);
     if (oldIndex < 0) {
       resync();
       return;
     }
-    const overColumn = overId in board ? overId : findColumnIn(board, overId);
-    const newIndex = overColumn && overColumn !== UNCATEGORIZED ? order.indexOf(overColumn) : 0;
+    const overColumnId = overCatId.startsWith('cat-') ? overCatId.slice(4) : overCatId;
+    const newIndex =
+      overColumnId && overColumnId !== UNCATEGORIZED ? order.indexOf(overColumnId) : 0;
     if (newIndex < 0) {
       resync();
       return;
@@ -270,9 +322,9 @@ export function ListPage() {
       }
       return rebuilt;
     });
-    const pos = newOrder.indexOf(activeId);
+    const pos = newOrder.indexOf(activeColumnId);
     categoryReorder.mutate({
-      id: activeId,
+      id: activeColumnId,
       previousId: newOrder[pos - 1] ?? null,
       nextId: newOrder[pos + 1] ?? null,
     });
@@ -283,7 +335,7 @@ export function ListPage() {
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
-    if (activeId in board) return;
+    if (activeId.startsWith('cat-')) return;
     setBoard((prev) => {
       const from = findColumnIn(prev, activeId);
       const to = findColumnIn(prev, overId);
@@ -314,42 +366,38 @@ export function ListPage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    if (activeId in board && activeId !== UNCATEGORIZED) {
+    if (activeId.startsWith('cat-')) {
       handleCategoryDragEnd(activeId, overId);
       return;
     }
 
-    let targetColumn: string | undefined;
-    let finalItems: ItemDto[] = [];
-    setBoard((prev) => {
-      const from = findColumnIn(prev, activeId);
-      const to = findColumnIn(prev, overId);
-      if (!from || !to) return prev;
-      let next = prev;
-      if (from === to) {
-        const items = prev[to] ?? [];
-        const oldIndex = items.findIndex((item) => item.id === activeId);
-        const newIndex =
-          overId in prev ? items.length - 1 : items.findIndex((item) => item.id === overId);
-        if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
-          next = { ...prev, [to]: arrayMove(items, oldIndex, newIndex) };
-        }
-      }
-      targetColumn = to;
-      finalItems = next[to] ?? [];
-      return next;
-    });
-
-    if (!targetColumn) {
+    // Compute the placement from the current board (already reflecting any
+    // cross-bucket move applied during onDragOver). Reading values out of a
+    // setState updater would be stale because React defers it.
+    const from = findColumnIn(board, activeId);
+    const to = findColumnIn(board, overId);
+    if (!from || !to) {
       resync();
       return;
     }
-    const index = finalItems.findIndex((item) => item.id === activeId);
+    let targetItems = board[to] ?? [];
+    if (from === to) {
+      const oldIndex = targetItems.findIndex((item) => item.id === activeId);
+      const newIndex =
+        overId in board
+          ? targetItems.length - 1
+          : targetItems.findIndex((item) => item.id === overId);
+      if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
+        targetItems = arrayMove(targetItems, oldIndex, newIndex);
+        setBoard((prev) => ({ ...prev, [to]: targetItems }));
+      }
+    }
+    const index = targetItems.findIndex((item) => item.id === activeId);
     reorder.mutate({
       id: activeId,
-      categoryId: targetColumn === UNCATEGORIZED ? null : targetColumn,
-      previousId: finalItems[index - 1]?.id ?? null,
-      nextId: finalItems[index + 1]?.id ?? null,
+      categoryId: to === UNCATEGORIZED ? null : to,
+      previousId: targetItems[index - 1]?.id ?? null,
+      nextId: targetItems[index + 1]?.id ?? null,
     });
   }
 
@@ -434,7 +482,7 @@ export function ListPage() {
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetection}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
@@ -442,7 +490,7 @@ export function ListPage() {
         >
           <div className="board">
             <SortableContext
-              items={columns.map((column) => column.id)}
+              items={columns.map((column) => `cat-${column.id}`)}
               strategy={verticalListSortingStrategy}
             >
               {columns.map((column) => (
