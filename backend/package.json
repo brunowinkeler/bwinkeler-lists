@@ -12,6 +12,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "create-user": "tsx src/scripts/create-user.ts",
+    "smoke": "tsx src/scripts/smoke.ts",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
