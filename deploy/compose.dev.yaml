@@ -1,0 +1,27 @@
+name: bw-lists-dev
+
+# Local development database only. Ports are bound to 127.0.0.1. The api and web
+# services are added in the containerization phase. Do not use these values or
+# this file in production.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-lists_dev}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-change-me-in-dev}
+      POSTGRES_DB: ${PGDATABASE:-lists_dev}
+    ports:
+      - '127.0.0.1:${PGPORT:-5432}:5432'
+    volumes:
+      - lists-dev-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${PGUSER:-lists_dev} -d ${PGDATABASE:-lists_dev}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lists-dev-postgres:
+    name: bw-lists-dev-postgres
