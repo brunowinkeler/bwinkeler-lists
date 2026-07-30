@@ -33,3 +33,23 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return parsed.data;
 }
+
+const DbEnvSchema = z.object({
+  PGHOST: z.string().min(1),
+  PGPORT: z.coerce.number().int().positive().default(5432),
+  PGDATABASE: z.string().min(1),
+  PGUSER: z.string().min(1),
+  PGPASSWORD: z.string().min(1),
+});
+
+export type DbConfig = z.infer<typeof DbEnvSchema>;
+
+/** Loads only the database connection variables (used by CLI/DB scripts). */
+export function loadDbConfig(env: NodeJS.ProcessEnv = process.env): DbConfig {
+  const parsed = DbEnvSchema.safeParse(env);
+  if (!parsed.success) {
+    const keys = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ');
+    throw new Error(`Invalid database configuration. Check these variables: ${keys}`);
+  }
+  return parsed.data;
+}

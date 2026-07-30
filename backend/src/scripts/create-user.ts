@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { eq } from 'drizzle-orm';
-import { loadConfig } from '../config.js';
+import { loadDbConfig } from '../config.js';
 import { createDatabase, waitForDatabase } from '../db/client.js';
 import { hashPassword } from '../auth/password.js';
 import { users } from '../db/schema.js';
@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const config = loadConfig();
+  const config = loadDbConfig();
   const { pool, db } = createDatabase(config);
   await waitForDatabase(pool);
 

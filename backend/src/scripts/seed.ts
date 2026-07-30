@@ -1,6 +1,6 @@
 import argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
-import { loadConfig } from '../config.js';
+import { loadDbConfig } from '../config.js';
 import { createDatabase, waitForDatabase } from '../db/client.js';
 import { items, listMembers, lists, users } from '../db/schema.js';
 
@@ -13,7 +13,7 @@ function first<T>(rows: T[]): T {
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const config = loadDbConfig();
   const { pool, db } = createDatabase(config);
   await waitForDatabase(pool);
 

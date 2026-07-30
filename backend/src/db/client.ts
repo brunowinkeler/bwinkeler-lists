@@ -1,11 +1,18 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import type { AppConfig } from '../config.js';
 import * as schema from './schema.js';
+
+export interface DbConnectionConfig {
+  PGHOST: string;
+  PGPORT: number;
+  PGDATABASE: string;
+  PGUSER: string;
+  PGPASSWORD: string;
+}
 
 export type Database = ReturnType<typeof createDatabase>['db'];
 
-export function createPool(config: AppConfig): pg.Pool {
+export function createPool(config: DbConnectionConfig): pg.Pool {
   return new pg.Pool({
     host: config.PGHOST,
     port: config.PGPORT,
@@ -16,7 +23,7 @@ export function createPool(config: AppConfig): pg.Pool {
   });
 }
 
-export function createDatabase(config: AppConfig) {
+export function createDatabase(config: DbConnectionConfig) {
   const pool = createPool(config);
   const db = drizzle(pool, { schema });
   return { pool, db };
