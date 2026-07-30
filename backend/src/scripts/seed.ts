@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { generateNKeysBetween } from 'fractional-indexing';
 import { loadDbConfig } from '../config.js';
 import { createDatabase, waitForDatabase } from '../db/client.js';
-import { items, listMembers, lists, users } from '../db/schema.js';
+import { categories, items, listMembers, lists, users } from '../db/schema.js';
 
 function first<T>(rows: T[]): T {
   const row = rows[0];
@@ -51,12 +51,36 @@ async function main(): Promise<void> {
     { listId: shopping.id, userId: admin.id, role: 'owner' },
     { listId: shopping.id, userId: member.id, role: 'editor' },
   ]);
+  const categoryPositions = generateNKeysBetween(null, null, 2) as [string, string];
+  const categoryRows = await db
+    .insert(categories)
+    .values([
+      { listId: shopping.id, name: 'Bakery', position: categoryPositions[0] },
+      { listId: shopping.id, name: 'Dairy', position: categoryPositions[1] },
+    ])
+    .returning({ id: categories.id });
+  const bakeryId = categoryRows[0]?.id ?? null;
+  const dairyId = categoryRows[1]?.id ?? null;
+
   const shoppingPositions = generateNKeysBetween(null, null, 3) as [string, string, string];
   await db.insert(items).values([
-    { listId: shopping.id, title: 'Milk', position: shoppingPositions[0], createdBy: admin.id },
-    { listId: shopping.id, title: 'Bread', position: shoppingPositions[1], createdBy: admin.id },
     {
       listId: shopping.id,
+      categoryId: dairyId,
+      title: 'Milk',
+      position: shoppingPositions[0],
+      createdBy: admin.id,
+    },
+    {
+      listId: shopping.id,
+      categoryId: bakeryId,
+      title: 'Bread',
+      position: shoppingPositions[1],
+      createdBy: admin.id,
+    },
+    {
+      listId: shopping.id,
+      categoryId: dairyId,
       title: 'Eggs',
       position: shoppingPositions[2],
       status: 'done',

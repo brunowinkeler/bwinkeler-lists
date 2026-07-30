@@ -721,6 +721,135 @@ label {
 }
 
 /* --------------------------------------------------------------------------
+   Category board (list detail)
+   -------------------------------------------------------------------------- */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.panel__title-input {
+  width: auto;
+  max-width: 220px;
+  padding: 0.3rem 0.5rem;
+  font-weight: 700;
+}
+
+.panel__count {
+  color: var(--text-subtle);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  min-height: 60px;
+  transition: background-color 0.12s ease;
+}
+
+.panel__body.is-over {
+  background: var(--primary-soft);
+}
+
+.panel__empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--text-subtle);
+  font-size: 0.85rem;
+}
+
+.add-category {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* --------------------------------------------------------------------------
+   Modal
+   -------------------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 10, 16, 0.55);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 400;
+}
+
+.check-row input {
+  width: auto;
+  margin-top: 0.15rem;
+}
+
+.check-row .check-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+/* --------------------------------------------------------------------------
    Auth screen
    -------------------------------------------------------------------------- */
 .auth {

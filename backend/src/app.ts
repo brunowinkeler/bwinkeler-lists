@@ -8,6 +8,7 @@ import { issueCsrfToken } from './auth/cookies.js';
 import { resolveSession, safeEqual } from './auth/session.js';
 import { registerHealthRoutes } from './health/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
+import { registerCategoryRoutes } from './modules/categories/routes.js';
 import { registerItemRoutes } from './modules/items/routes.js';
 import { registerListRoutes } from './modules/lists/routes.js';
 import { registerNotificationRoutes } from './modules/notifications/routes.js';
@@ -70,6 +71,7 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
     async (api) => {
       await api.register(registerListRoutes);
       await api.register(registerItemRoutes);
+      await api.register(registerCategoryRoutes);
       await api.register(registerSharingRoutes);
       await api.register(registerNotificationRoutes);
     },

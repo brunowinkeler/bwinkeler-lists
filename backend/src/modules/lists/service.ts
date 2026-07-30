@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type {
+  CategoryDto,
   InvitationDto,
   ItemDto,
   ListDetailDto,
@@ -8,12 +9,13 @@ import type {
   MemberRole,
 } from '@bwinkeler-lists/shared';
 import type { Database } from '../../db/client.js';
-import { items, listInvitations, listMembers, lists, users } from '../../db/schema.js';
+import { categories, items, listInvitations, listMembers, lists, users } from '../../db/schema.js';
 
 export function toItemDto(row: typeof items.$inferSelect): ItemDto {
   return {
     id: row.id,
     listId: row.listId,
+    categoryId: row.categoryId,
     title: row.title,
     status: row.status,
     position: row.position,
@@ -24,6 +26,17 @@ export function toItemDto(row: typeof items.$inferSelect): ItemDto {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     version: row.version,
+  };
+}
+
+export function toCategoryDto(row: typeof categories.$inferSelect): CategoryDto {
+  return {
+    id: row.id,
+    listId: row.listId,
+    name: row.name,
+    position: row.position,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -90,6 +103,12 @@ export async function loadListDetail(
     .where(eq(items.listId, listId))
     .orderBy(asc(items.position));
 
+  const categoryRows = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.listId, listId))
+    .orderBy(asc(categories.position));
+
   let invitations: InvitationDto[] = [];
   if (role === 'owner') {
     const invitationRows = await db
@@ -117,7 +136,83 @@ export async function loadListDetail(
   return {
     list: toListSummary(list, role),
     members,
+    categories: categoryRows.map(toCategoryDto),
     items: itemRows.map(toItemDto),
     invitations,
   };
+}
+
+export interface DuplicateOptions {
+  name?: string | undefined;
+  includeCompleted: boolean;
+  resetCompleted: boolean;
+}
+
+/** Creates a copy of a list owned by `ownerId`, cloning its categories and
+ * (optionally filtered) items. Category references are remapped to the new
+ * category rows; assignees are cleared because the copy starts with only the
+ * owner as a member. */
+export async function duplicateList(
+  db: Database,
+  sourceListId: string,
+  ownerId: string,
+  opts: DuplicateOptions,
+): Promise<ListSummaryDto | null> {
+  const source = await getListById(db, sourceListId);
+  if (!source) return null;
+
+  return db.transaction(async (tx) => {
+    const listRows = await tx
+      .insert(lists)
+      .values({ ownerId, name: opts.name ?? `${source.name} (copy)`, kind: source.kind })
+      .returning();
+    const newList = listRows[0];
+    if (!newList) throw new Error('Failed to create list copy');
+
+    await tx.insert(listMembers).values({ listId: newList.id, userId: ownerId, role: 'owner' });
+
+    const sourceCategories = await tx
+      .select()
+      .from(categories)
+      .where(eq(categories.listId, sourceListId))
+      .orderBy(asc(categories.position));
+
+    const categoryIdMap = new Map<string, string>();
+    for (const category of sourceCategories) {
+      const rows = await tx
+        .insert(categories)
+        .values({ listId: newList.id, name: category.name, position: category.position })
+        .returning({ id: categories.id });
+      const newId = rows[0]?.id;
+      if (newId) categoryIdMap.set(category.id, newId);
+    }
+
+    const sourceItems = await tx
+      .select()
+      .from(items)
+      .where(
+        opts.includeCompleted
+          ? eq(items.listId, sourceListId)
+          : and(eq(items.listId, sourceListId), eq(items.status, 'open')),
+      )
+      .orderBy(asc(items.position));
+
+    if (sourceItems.length > 0) {
+      await tx.insert(items).values(
+        sourceItems.map((item) => ({
+          listId: newList.id,
+          categoryId: item.categoryId ? (categoryIdMap.get(item.categoryId) ?? null) : null,
+          title: item.title,
+          status: opts.resetCompleted ? ('open' as const) : item.status,
+          position: item.position,
+          notes: item.notes,
+          dueDate: item.dueDate,
+          assigneeId: null,
+          createdBy: ownerId,
+        })),
+      );
+    }
+
+    return toListSummary(newList, 'owner');
+  });
 }

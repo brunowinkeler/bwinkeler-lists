@@ -44,6 +44,7 @@ export const createItemInputSchema = z.object({
   notes: notesSchema.nullable().optional(),
   dueDate: dueDateSchema.nullable().optional(),
   assigneeId: z.uuid().nullable().optional(),
+  categoryId: z.uuid().nullable().optional(),
 });
 export type CreateItemInput = z.infer<typeof createItemInputSchema>;
 
@@ -54,6 +55,7 @@ export const updateItemInputSchema = z
     notes: notesSchema.nullable().optional(),
     dueDate: dueDateSchema.nullable().optional(),
     assigneeId: z.uuid().nullable().optional(),
+    categoryId: z.uuid().nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'No fields to update' });
 export type UpdateItemInput = z.infer<typeof updateItemInputSchema>;
@@ -61,8 +63,34 @@ export type UpdateItemInput = z.infer<typeof updateItemInputSchema>;
 export const reorderItemInputSchema = z.object({
   previousId: z.uuid().nullable().optional(),
   nextId: z.uuid().nullable().optional(),
+  categoryId: z.uuid().nullable().optional(),
 });
 export type ReorderItemInput = z.infer<typeof reorderItemInputSchema>;
+
+const categoryNameSchema = z.string().trim().min(1).max(120);
+
+export const createCategoryInputSchema = z.object({
+  name: categoryNameSchema,
+});
+export type CreateCategoryInput = z.infer<typeof createCategoryInputSchema>;
+
+export const renameCategoryInputSchema = z.object({
+  name: categoryNameSchema,
+});
+export type RenameCategoryInput = z.infer<typeof renameCategoryInputSchema>;
+
+export const reorderCategoryInputSchema = z.object({
+  previousId: z.uuid().nullable().optional(),
+  nextId: z.uuid().nullable().optional(),
+});
+export type ReorderCategoryInput = z.infer<typeof reorderCategoryInputSchema>;
+
+export const duplicateListInputSchema = z.object({
+  name: z.string().trim().min(1).max(200).optional(),
+  includeCompleted: z.boolean().optional().default(true),
+  resetCompleted: z.boolean().optional().default(false),
+});
+export type DuplicateListInput = z.infer<typeof duplicateListInputSchema>;
 
 export const inviteInputSchema = z.object({
   email: emailSchema,
@@ -90,6 +118,7 @@ export interface MemberDto {
 export interface ItemDto {
   id: string;
   listId: string;
+  categoryId: string | null;
   title: string;
   status: ItemStatus;
   position: string;
@@ -100,6 +129,15 @@ export interface ItemDto {
   createdAt: string;
   updatedAt: string;
   version: number;
+}
+
+export interface CategoryDto {
+  id: string;
+  listId: string;
+  name: string;
+  position: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface InvitationDto {
@@ -123,6 +161,7 @@ export interface NotificationDto {
 export interface ListDetailDto {
   list: ListSummaryDto;
   members: MemberDto[];
+  categories: CategoryDto[];
   items: ItemDto[];
   invitations: InvitationDto[];
 }

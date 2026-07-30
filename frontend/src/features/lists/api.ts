@@ -1,6 +1,8 @@
 import type {
+  CategoryDto,
   CreateItemInput,
   CreateListInput,
+  DuplicateListInput,
   ItemDto,
   ListDetailDto,
   ListSummaryDto,
@@ -46,4 +48,23 @@ export function reorderItem(id: string, input: ReorderItemInput): Promise<{ item
 
 export function deleteItem(id: string): Promise<void> {
   return apiSend('DELETE', `/items/${id}`);
+}
+
+export function createCategory(listId: string, name: string): Promise<{ category: CategoryDto }> {
+  return apiSend('POST', `/lists/${listId}/categories`, { name });
+}
+
+export function renameCategory(id: string, name: string): Promise<{ category: CategoryDto }> {
+  return apiSend('PATCH', `/categories/${id}`, { name });
+}
+
+export function deleteCategory(id: string): Promise<void> {
+  return apiSend('DELETE', `/categories/${id}`);
+}
+
+export function duplicateList(
+  id: string,
+  input: DuplicateListInput,
+): Promise<{ list: ListSummaryDto }> {
+  return apiSend('POST', `/lists/${id}/duplicate`, input);
 }

@@ -8,6 +8,7 @@ import {
 import { getSessionUser } from '../../auth/guards.js';
 import { getListRole } from '../../authz.js';
 import { items } from '../../db/schema.js';
+import { categoryBelongsToList } from '../categories/service.js';
 import { getListById, toItemDto, touchList } from '../lists/service.js';
 import { createNotification } from '../notifications/service.js';
 import { itemPositionById, keyBetween, lastItemPosition } from './service.js';
@@ -37,12 +38,17 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     if (input.assigneeId && !(await getListRole(db, listId, input.assigneeId))) {
       return reply.code(400).send({ error: 'Assignee is not a member of the list' });
     }
+    const categoryId = input.categoryId ?? null;
+    if (categoryId && !(await categoryBelongsToList(db, listId, categoryId))) {
+      return reply.code(400).send({ error: 'Category does not belong to the list' });
+    }
 
-    const position = keyBetween(await lastItemPosition(db, listId), null);
+    const position = keyBetween(await lastItemPosition(db, listId, categoryId), null);
     const rows = await db
       .insert(items)
       .values({
         listId,
+        categoryId,
         title: input.title,
         position,
         notes: input.notes ?? null,
@@ -100,6 +106,20 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     if (input.notes !== undefined) updates.notes = input.notes;
     if (input.dueDate !== undefined) updates.dueDate = input.dueDate;
     if (input.assigneeId !== undefined) updates.assigneeId = input.assigneeId;
+    if (input.categoryId !== undefined && input.categoryId !== existing.categoryId) {
+      if (
+        input.categoryId !== null &&
+        !(await categoryBelongsToList(db, existing.listId, input.categoryId))
+      ) {
+        return reply.code(400).send({ error: 'Category does not belong to the list' });
+      }
+      updates.categoryId = input.categoryId;
+      // Moving buckets: append to the end of the target category.
+      updates.position = keyBetween(
+        await lastItemPosition(db, existing.listId, input.categoryId),
+        null,
+      );
+    }
 
     const rows = await db.update(items).set(updates).where(eq(items.id, id)).returning();
     const item = rows[0];
@@ -129,13 +149,20 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
 
     const parsed = reorderItemInputSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
-    const { previousId, nextId } = parsed.data;
+    const { previousId, nextId, categoryId } = parsed.data;
 
     const existingRows = await db.select().from(items).where(eq(items.id, id)).limit(1);
     const existing = existingRows[0];
     if (!existing) return reply.code(404).send({ error: 'Item not found' });
     if (!(await getListRole(db, existing.listId, user.id))) {
       return reply.code(404).send({ error: 'Item not found' });
+    }
+    if (
+      categoryId !== undefined &&
+      categoryId !== null &&
+      !(await categoryBelongsToList(db, existing.listId, categoryId))
+    ) {
+      return reply.code(400).send({ error: 'Category does not belong to the list' });
     }
 
     const previousPosition = previousId
@@ -150,11 +177,10 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: 'Invalid reorder request' });
     }
 
-    const rows = await db
-      .update(items)
-      .set({ position, updatedAt: new Date() })
-      .where(eq(items.id, id))
-      .returning();
+    const updates: Partial<typeof items.$inferInsert> = { position, updatedAt: new Date() };
+    if (categoryId !== undefined) updates.categoryId = categoryId;
+
+    const rows = await db.update(items).set(updates).where(eq(items.id, id)).returning();
     const item = rows[0];
     if (!item) return reply.code(404).send({ error: 'Item not found' });
     await touchList(db, existing.listId);

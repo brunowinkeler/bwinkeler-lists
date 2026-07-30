@@ -1,11 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { asc, eq, sql } from 'drizzle-orm';
-import { createListInputSchema, renameListInputSchema } from '@bwinkeler-lists/shared';
+import {
+  createListInputSchema,
+  duplicateListInputSchema,
+  renameListInputSchema,
+} from '@bwinkeler-lists/shared';
 import { getSessionUser } from '../../auth/guards.js';
 import { getListRole } from '../../authz.js';
 import { writeAudit } from '../../audit.js';
 import { listMembers, lists } from '../../db/schema.js';
-import { loadListDetail, toListSummary } from './service.js';
+import { duplicateList, loadListDetail, toListSummary } from './service.js';
 
 export async function registerListRoutes(app: FastifyInstance): Promise<void> {
   const { db } = app;
@@ -36,6 +40,28 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
       return created;
     });
     return reply.code(201).send({ list: toListSummary(list, 'owner') });
+  });
+
+  app.post<{ Params: { id: string } }>('/lists/:id/duplicate', async (request, reply) => {
+    const user = getSessionUser(request, reply);
+    if (!user) return;
+    const role = await getListRole(db, request.params.id, user.id);
+    if (!role) return reply.code(404).send({ error: 'List not found' });
+    const parsed = duplicateListInputSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
+    const summary = await duplicateList(db, request.params.id, user.id, {
+      name: parsed.data.name,
+      includeCompleted: parsed.data.includeCompleted,
+      resetCompleted: parsed.data.resetCompleted,
+    });
+    if (!summary) return reply.code(404).send({ error: 'List not found' });
+    await writeAudit(db, {
+      actorId: user.id,
+      action: 'list.duplicate',
+      targetType: 'list',
+      targetId: request.params.id,
+    });
+    return reply.code(201).send({ list: summary });
   });
 
   app.get<{ Params: { id: string } }>('/lists/:id', async (request, reply) => {

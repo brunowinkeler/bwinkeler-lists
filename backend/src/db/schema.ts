@@ -126,6 +126,21 @@ export const listInvitations = pgTable(
   ],
 );
 
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    listId: uuid('list_id')
+      .notNull()
+      .references(() => lists.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    position: text('position').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('categories_list_position_idx').on(table.listId, table.position)],
+);
+
 export const items = pgTable(
   'items',
   {
@@ -133,6 +148,7 @@ export const items = pgTable(
     listId: uuid('list_id')
       .notNull()
       .references(() => lists.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
     title: text('title').notNull(),
     status: itemStatus('status').notNull().default('open'),
     position: text('position').notNull(),
@@ -146,6 +162,7 @@ export const items = pgTable(
   },
   (table) => [
     index('items_list_position_idx').on(table.listId, table.position),
+    index('items_category_idx').on(table.categoryId),
     index('items_assignee_idx').on(table.assigneeId),
   ],
 );
