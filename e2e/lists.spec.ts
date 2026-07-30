@@ -13,7 +13,7 @@ test('create a list, add and complete an item, and persist across reload', async
   const listName = `E2E ${Date.now()}`;
   await page.getByLabel('New list name').fill(listName);
   await page.getByRole('button', { name: 'Create' }).click();
-  await page.getByRole('link', { name: listName }).click();
+  // Creating a list navigates straight to the new list's page.
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
 
   await page.getByLabel('New item title').fill('First item');
@@ -36,7 +36,7 @@ test('realtime: a second browser context sees a newly added item', async ({ brow
   const listName = `RT ${Date.now()}`;
   await pageA.getByLabel('New list name').fill(listName);
   await pageA.getByRole('button', { name: 'Create' }).click();
-  await pageA.getByRole('link', { name: listName }).click();
+  // Creating a list navigates straight to the new list's page.
   await expect(pageA.getByRole('heading', { name: listName })).toBeVisible();
   const listUrl = pageA.url();
 

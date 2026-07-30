@@ -1,21 +1,24 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ListKind } from '@bwinkeler-lists/shared';
 import { createList, fetchLists, listsKey } from './api';
 import { InvitationsInbox } from '../sharing/InvitationsInbox';
+import { PlusIcon } from '../../components/icons';
 
 export function ListsOverviewPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const lists = useQuery({ queryKey: listsKey, queryFn: fetchLists });
   const [name, setName] = useState('');
   const [kind, setKind] = useState<ListKind>('task');
 
   const create = useMutation({
     mutationFn: () => createList({ name: name.trim(), kind }),
-    onSuccess: () => {
+    onSuccess: async (result) => {
       setName('');
-      void queryClient.invalidateQueries({ queryKey: listsKey });
+      await queryClient.invalidateQueries({ queryKey: listsKey });
+      navigate(`/lists/${result.list.id}`);
     },
   });
 
@@ -27,54 +30,66 @@ export function ListsOverviewPage() {
   }
 
   return (
-    <main className="container stack">
+    <main className="container page">
       <InvitationsInbox />
-      <section className="stack">
-        <h2>Your lists</h2>
-        <form className="card row" onSubmit={onCreate} style={{ alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="list-name">New list name</label>
-            <input
-              id="list-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              style={{ width: '100%' }}
-            />
-          </div>
+      <section className="stack-lg">
+        <div className="page-header">
           <div>
-            <label htmlFor="list-kind">Kind</label>
-            <select
-              id="list-kind"
-              value={kind}
-              onChange={(event) => setKind(event.target.value as ListKind)}
-            >
-              <option value="task">Task list</option>
-              <option value="simple">Simple list</option>
-            </select>
+            <p className="eyebrow">Your workspace</p>
+            <h1>Your lists</h1>
           </div>
-          <button className="primary" type="submit" disabled={create.isPending}>
-            Create
-          </button>
-        </form>
-        {lists.isLoading && <p className="muted">Loading…</p>}
-        {lists.data && (
-          <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {lists.data.lists.map((list) => (
-              <li
-                key={list.id}
-                className="card row"
-                style={{ justifyContent: 'space-between', gap: '0.75rem' }}
+        </div>
+
+        <form className="card" onSubmit={onCreate}>
+          <div className="row wrap" style={{ alignItems: 'flex-end' }}>
+            <div className="field grow">
+              <label htmlFor="list-name">New list name</label>
+              <input
+                id="list-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="e.g. Weekend groceries"
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="list-kind">Kind</label>
+              <select
+                id="list-kind"
+                value={kind}
+                onChange={(event) => setKind(event.target.value as ListKind)}
               >
-                <Link to={`/lists/${list.id}`} style={{ fontWeight: 600 }}>
-                  {list.name}
+                <option value="task">Task list</option>
+                <option value="simple">Simple list</option>
+              </select>
+            </div>
+            <button className="primary" type="submit" disabled={create.isPending}>
+              <PlusIcon />
+              <span>Create</span>
+            </button>
+          </div>
+        </form>
+
+        {lists.isLoading && <p className="muted">Loading…</p>}
+        {lists.data && lists.data.lists.length === 0 && (
+          <div className="empty">
+            <p>No lists yet.</p>
+            <p className="subtle">Create your first list above to get started.</p>
+          </div>
+        )}
+        {lists.data && lists.data.lists.length > 0 && (
+          <ul className="list-grid">
+            {lists.data.lists.map((list) => (
+              <li key={list.id}>
+                <Link to={`/lists/${list.id}`} className="list-tile">
+                  <span className="list-tile__name">{list.name}</span>
+                  <span className="row">
+                    <span className="badge accent">{list.kind}</span>
+                    <span className="badge">{list.role}</span>
+                  </span>
                 </Link>
-                <span className="muted">
-                  {list.kind} · {list.role}
-                </span>
               </li>
             ))}
-            {lists.data.lists.length === 0 && <li className="muted">No lists yet.</li>}
           </ul>
         )}
       </section>

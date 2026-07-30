@@ -1,5 +1,6 @@
 import argon2 from 'argon2';
 import { eq } from 'drizzle-orm';
+import { generateNKeysBetween } from 'fractional-indexing';
 import { loadDbConfig } from '../config.js';
 import { createDatabase, waitForDatabase } from '../db/client.js';
 import { items, listMembers, lists, users } from '../db/schema.js';
@@ -50,13 +51,14 @@ async function main(): Promise<void> {
     { listId: shopping.id, userId: admin.id, role: 'owner' },
     { listId: shopping.id, userId: member.id, role: 'editor' },
   ]);
+  const shoppingPositions = generateNKeysBetween(null, null, 3) as [string, string, string];
   await db.insert(items).values([
-    { listId: shopping.id, title: 'Milk', position: '000001', createdBy: admin.id },
-    { listId: shopping.id, title: 'Bread', position: '000002', createdBy: admin.id },
+    { listId: shopping.id, title: 'Milk', position: shoppingPositions[0], createdBy: admin.id },
+    { listId: shopping.id, title: 'Bread', position: shoppingPositions[1], createdBy: admin.id },
     {
       listId: shopping.id,
       title: 'Eggs',
-      position: '000003',
+      position: shoppingPositions[2],
       status: 'done',
       createdBy: member.id,
     },
@@ -69,18 +71,19 @@ async function main(): Promise<void> {
       .returning(),
   );
   await db.insert(listMembers).values({ listId: tasks.id, userId: admin.id, role: 'owner' });
+  const taskPositions = generateNKeysBetween(null, null, 2) as [string, string];
   await db.insert(items).values([
     {
       listId: tasks.id,
       title: 'Fix the sink',
-      position: '000001',
+      position: taskPositions[0],
       notes: 'Call the plumber',
       createdBy: admin.id,
     },
     {
       listId: tasks.id,
       title: 'Plan the trip',
-      position: '000002',
+      position: taskPositions[1],
       assigneeId: admin.id,
       createdBy: admin.id,
     },

@@ -52,14 +52,17 @@ export async function apiSend<T>(
   body?: unknown,
 ): Promise<T> {
   const token = await ensureCsrfToken();
+  const hasBody = body !== undefined;
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: 'include',
     headers: {
-      'content-type': 'application/json',
+      // Only advertise a JSON body when one is actually sent; otherwise Fastify
+      // rejects the request with 400 for an empty application/json body.
+      ...(hasBody ? { 'content-type': 'application/json' } : {}),
       'x-csrf-token': token,
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: hasBody ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) throw await toError(response);
   if (response.status === 204) return undefined as T;

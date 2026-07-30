@@ -26,23 +26,27 @@ export function InvitationsInbox() {
 
   return (
     <section className="card stack" aria-label="Pending invitations">
-      <h2>Invitations</h2>
+      <div className="section-title">
+        <h2>Invitations</h2>
+        <span className="badge accent">{items.length}</span>
+      </div>
       <ul className="stack" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {items.map((invitation) => (
-          <li
-            key={invitation.id}
-            className="row"
-            style={{ justifyContent: 'space-between', gap: '0.75rem' }}
-          >
-            <span>“{invitation.listName}”</span>
+          <li key={invitation.id} className="row-between wrap">
+            <span>
+              You’ve been invited to <strong>{invitation.listName}</strong>
+            </span>
             <span className="row">
               <button
-                className="primary"
+                className="primary btn-sm"
                 onClick={() => respond.mutate({ id: invitation.id, action: 'accept' })}
               >
                 Accept
               </button>
-              <button onClick={() => respond.mutate({ id: invitation.id, action: 'decline' })}>
+              <button
+                className="btn-sm"
+                onClick={() => respond.mutate({ id: invitation.id, action: 'decline' })}
+              >
                 Decline
               </button>
             </span>

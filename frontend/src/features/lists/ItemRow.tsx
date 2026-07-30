@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { ItemDto, ListKind, MemberDto } from '@bwinkeler-lists/shared';
-import { deleteItem, listKey, reorderItem, updateItem } from './api';
+import { deleteItem, listKey, updateItem } from './api';
+import { GripIcon, TrashIcon } from '../../components/icons';
 
 interface ItemRowProps {
   listId: string;
   item: ItemDto;
   kind: ListKind;
   members: MemberDto[];
-  index: number;
-  items: ItemDto[];
 }
 
-export function ItemRow({ listId, item, kind, members, index, items }: ItemRowProps) {
+export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
   const queryClient = useQueryClient();
   const invalidate = (): Promise<void> =>
     queryClient.invalidateQueries({ queryKey: listKey(listId) });
@@ -22,79 +23,91 @@ export function ItemRow({ listId, item, kind, members, index, items }: ItemRowPr
     onSuccess: invalidate,
   });
   const remove = useMutation({ mutationFn: () => deleteItem(item.id), onSuccess: invalidate });
-  const move = useMutation({
-    mutationFn: (input: Parameters<typeof reorderItem>[1]) => reorderItem(item.id, input),
-    onSuccess: invalidate,
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
   });
+  const style = { transform: CSS.Transform.toString(transform), transition };
 
   const [title, setTitle] = useState(item.title);
+  const titleRef = useRef<HTMLInputElement>(null);
+  // Keep the local draft in sync with realtime updates, but never clobber the
+  // value while the user is actively editing this field.
+  useEffect(() => {
+    if (document.activeElement !== titleRef.current) {
+      setTitle(item.title);
+    }
+  }, [item.title]);
 
   function commitTitle(): void {
     const next = title.trim();
-    if (next.length > 0 && next !== item.title) {
+    if (next.length === 0) {
+      setTitle(item.title);
+      return;
+    }
+    if (next !== item.title) {
       update.mutate({ title: next });
     }
   }
 
-  function moveUp(): void {
-    if (index === 0) return;
-    move.mutate({ previousId: items[index - 2]?.id ?? null, nextId: items[index - 1]?.id ?? null });
-  }
-  function moveDown(): void {
-    if (index >= items.length - 1) return;
-    move.mutate({ previousId: items[index + 1]?.id ?? null, nextId: items[index + 2]?.id ?? null });
-  }
+  const isDone = item.status === 'done';
 
   return (
-    <li className="card stack">
-      <div className="row" style={{ justifyContent: 'space-between', gap: '0.5rem' }}>
-        <div className="row" style={{ flex: 1 }}>
-          <input
-            type="checkbox"
-            checked={item.status === 'done'}
-            aria-label={`Mark “${item.title}” as done`}
-            onChange={(event) => update.mutate({ status: event.target.checked ? 'done' : 'open' })}
-          />
-          <input
-            aria-label="Item title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onBlur={commitTitle}
-            style={{
-              flex: 1,
-              textDecoration: item.status === 'done' ? 'line-through' : 'none',
-            }}
-          />
-        </div>
-        <div className="row">
-          <button aria-label="Move up" onClick={moveUp} disabled={index === 0}>
-            Up
-          </button>
-          <button aria-label="Move down" onClick={moveDown} disabled={index >= items.length - 1}>
-            Down
-          </button>
-          <button
-            className="danger"
-            aria-label={`Delete “${item.title}”`}
-            onClick={() => remove.mutate()}
-          >
-            Delete
-          </button>
-        </div>
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`item${isDone ? ' is-done' : ''}${isDragging ? ' is-dragging' : ''}`}
+    >
+      <div className="item__main">
+        <button
+          type="button"
+          className="drag-handle"
+          aria-label="Drag to reorder"
+          {...attributes}
+          {...listeners}
+        >
+          <GripIcon />
+        </button>
+        <input
+          type="checkbox"
+          className="checkbox"
+          checked={isDone}
+          aria-label={`Mark “${item.title}” as done`}
+          onChange={(event) => update.mutate({ status: event.target.checked ? 'done' : 'open' })}
+        />
+        <input
+          ref={titleRef}
+          className={`item__title${isDone ? ' is-done' : ''}`}
+          aria-label="Item title"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+          }}
+        />
+        <button
+          type="button"
+          className="icon-btn danger"
+          aria-label={`Delete “${item.title}”`}
+          onClick={() => remove.mutate()}
+        >
+          <TrashIcon />
+        </button>
       </div>
 
       {kind === 'task' && (
-        <div className="row" style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-          <label>
-            Due date
+        <div className="item__meta">
+          <div className="field">
+            <label>Due date</label>
             <input
               type="date"
               value={item.dueDate ?? ''}
               onChange={(event) => update.mutate({ dueDate: event.target.value || null })}
             />
-          </label>
-          <label>
-            Assignee
+          </div>
+          <div className="field">
+            <label>Assignee</label>
             <select
               value={item.assigneeId ?? ''}
               onChange={(event) => update.mutate({ assigneeId: event.target.value || null })}
@@ -106,21 +119,21 @@ export function ItemRow({ listId, item, kind, members, index, items }: ItemRowPr
                 </option>
               ))}
             </select>
-          </label>
-          <label style={{ flex: 1, minWidth: 180 }}>
-            Notes
+          </div>
+          <div className="field">
+            <label>Notes</label>
             <input
               aria-label="Notes"
               defaultValue={item.notes ?? ''}
+              placeholder="Add notes…"
               onBlur={(event) => {
                 const value = event.target.value;
                 if (value !== (item.notes ?? '')) {
                   update.mutate({ notes: value || null });
                 }
               }}
-              style={{ width: '100%' }}
             />
-          </label>
+          </div>
         </div>
       )}
     </li>

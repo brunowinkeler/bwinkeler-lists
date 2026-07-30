@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../../lib/api';
+import { BrandMark } from '../../components/BrandMark';
+import { APP_NAME, APP_TAGLINE } from '../../config/brand';
 import { useLogin } from './session';
 
 export function LoginPage() {
@@ -22,42 +24,50 @@ export function LoginPage() {
   }
 
   return (
-    <main className="container">
-      <h1>BWinkeler Lists</h1>
-      <form className="card stack" onSubmit={onSubmit} style={{ maxWidth: 360 }}>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            style={{ width: '100%' }}
-          />
+    <main className="auth">
+      <div className="auth__card">
+        <div className="auth__brand">
+          <span className="brand">
+            <BrandMark showName={false} />
+          </span>
+          <div className="stack" style={{ gap: 'var(--space-1)' }}>
+            <h1>{APP_NAME}</h1>
+            <p className="muted">{APP_TAGLINE}</p>
+          </div>
         </div>
-        <div>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            style={{ width: '100%' }}
-          />
-        </div>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="primary" type="submit" disabled={login.isPending}>
-          {login.isPending ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+        <form className="card stack" onSubmit={onSubmit}>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </div>
+          {error && (
+            <p className="alert error" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="primary" type="submit" disabled={login.isPending}>
+            {login.isPending ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
