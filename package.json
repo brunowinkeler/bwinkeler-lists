@@ -1,0 +1,34 @@
+{
+  "name": "bwinkeler-lists",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Collaborative shared-lists application (service_id: lists) for the bwinkeler.com platform.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build -w @bwinkeler-lists/shared && npm run build -w @bwinkeler-lists/backend && npm run build -w @bwinkeler-lists/frontend",
+    "typecheck": "npm run build -w @bwinkeler-lists/shared && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "test": "vitest run --passWithNoTests",
+    "validate": "npm run format && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.8.0",
+    "globals": "17.8.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.65.0",
+    "vitest": "4.1.10"
+  }
+}
