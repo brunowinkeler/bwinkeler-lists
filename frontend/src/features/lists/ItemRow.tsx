@@ -26,6 +26,7 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
+    animateLayoutChanges: () => false,
   });
   const style = { transform: CSS.Transform.toString(transform), transition };
 

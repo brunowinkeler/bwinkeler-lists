@@ -705,9 +705,9 @@ label {
 }
 
 .item.is-dragging {
-  opacity: 0.4;
-  box-shadow: none;
-  border-style: dashed;
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+  opacity: 0.95;
 }
 
 .item.is-done {
@@ -825,25 +825,9 @@ label {
 }
 
 .panel.is-dragging {
-  opacity: 0.4;
-}
-
-/* Floating clone shown while dragging (DragOverlay), so the real item/panel can
-   stay put as a ghost placeholder and the drop settles without a flicker. */
-.drag-overlay {
-  cursor: grabbing;
-  box-shadow: var(--shadow-lg);
+  opacity: 0.9;
   border-color: var(--primary);
-  opacity: 1;
-}
-.drag-overlay__title {
-  flex: 1;
-  min-width: 0;
-  padding: 0.35rem 0.5rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  box-shadow: var(--shadow-lg);
 }
 
 .panel__header {

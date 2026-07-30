@@ -58,6 +58,7 @@ export function CategoryPanel({
     id: `cat-${columnId}`,
     data: { type: 'category', columnId },
     disabled: isUncategorized,
+    animateLayoutChanges: () => false,
   });
   const drop = useDroppable({ id: columnId });
   const colorRef = useRef<HTMLDetailsElement>(null);

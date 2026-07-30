@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   DndContext,
-  DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   closestCenter,
   getFirstCollision,
@@ -43,7 +43,7 @@ import {
 import { CategoryPanel } from './CategoryPanel';
 import { DuplicateDialog } from './DuplicateDialog';
 import { SharingPanel } from '../sharing/SharingPanel';
-import { CopyIcon, GripIcon, PlusIcon } from '../../components/icons';
+import { CopyIcon, PlusIcon } from '../../components/icons';
 
 const UNCATEGORIZED = 'uncategorized';
 
@@ -110,8 +110,10 @@ export function ListPage() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [board, setBoard] = useState<Board>({});
   const [activeType, setActiveType] = useState<'item' | 'category' | null>(null);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const draggingRef = useRef(false);
+  // The item's bucket + index when the drag started, used to detect a drop back
+  // in the same place (so we don't reorder when nothing actually changed).
+  const dragOriginRef = useRef<{ bucket: string; index: number } | null>(null);
 
   useEffect(() => {
     if (!detail.data || draggingRef.current) return;
@@ -221,14 +223,16 @@ export function ListPage() {
           ),
         });
       }
-      const containers = args.droppableContainers.filter(
-        (c) => String(c.id) !== activeDragId && !String(c.id).startsWith('cat-'),
-      );
-      const pointer = pointerWithin({ ...args, droppableContainers: containers });
+      // Keep the active item among the candidates so it "owns" its slot until the
+      // drag passes a neighbour's midpoint (closestCenter), rather than swapping
+      // the instant the pointer edges into the next item.
+      const containers = args.droppableContainers.filter((c) => !String(c.id).startsWith('cat-'));
+      // Find the bucket under the pointer, ignoring the dragged item itself: its
+      // rect follows the cursor and would otherwise always capture the pointer.
+      const probe = containers.filter((c) => String(c.id) !== activeDragId);
+      const pointer = pointerWithin({ ...args, droppableContainers: probe });
       const hit = getFirstCollision(
-        pointer.length > 0
-          ? pointer
-          : rectIntersection({ ...args, droppableContainers: containers }),
+        pointer.length > 0 ? pointer : rectIntersection({ ...args, droppableContainers: probe }),
         'id',
       );
       if (hit == null) return [];
@@ -293,14 +297,20 @@ export function ListPage() {
   function onDragStart(event: DragStartEvent): void {
     draggingRef.current = true;
     const id = String(event.active.id);
-    setActiveDragId(id);
     setActiveType(id.startsWith('cat-') ? 'category' : 'item');
+    if (id.startsWith('cat-')) {
+      dragOriginRef.current = null;
+    } else {
+      const bucket = findColumnIn(board, id);
+      dragOriginRef.current = bucket
+        ? { bucket, index: (board[bucket] ?? []).findIndex((item) => item.id === id) }
+        : null;
+    }
   }
 
   function onDragCancel(): void {
     draggingRef.current = false;
     setActiveType(null);
-    setActiveDragId(null);
     resync();
   }
 
@@ -318,6 +328,11 @@ export function ListPage() {
         ? order.length - 1
         : order.indexOf(overColumnId);
     if (newIndex < 0) {
+      resync();
+      return;
+    }
+    if (oldIndex === newIndex) {
+      // Dropped in the same position — nothing to reorder.
       resync();
       return;
     }
@@ -370,7 +385,6 @@ export function ListPage() {
   function onDragEnd(event: DragEndEvent): void {
     draggingRef.current = false;
     setActiveType(null);
-    setActiveDragId(null);
     const { active, over } = event;
     if (!over) {
       resync();
@@ -406,6 +420,12 @@ export function ListPage() {
       }
     }
     const index = targetItems.findIndex((item) => item.id === activeId);
+    const origin = dragOriginRef.current;
+    if (origin && origin.bucket === to && origin.index === index) {
+      // Dropped back where it started — revert transient drag state, no reorder.
+      resync();
+      return;
+    }
     reorder.mutate({
       id: activeId,
       categoryId: to === UNCATEGORIZED ? null : to,
@@ -414,16 +434,50 @@ export function ListPage() {
     });
   }
 
-  const activeColumn =
-    activeDragId && activeDragId.startsWith('cat-')
-      ? columns.find((column) => `cat-${column.id}` === activeDragId)
-      : undefined;
-  const activeItem =
-    activeDragId && !activeDragId.startsWith('cat-')
-      ? Object.values(board)
-          .flat()
-          .find((item) => item.id === activeDragId)
-      : undefined;
+  const realCategories = columns.filter((column) => column.categoryId);
+  const uncategorizedColumn = columns.find((column) => column.categoryId === null);
+
+  function renderPanel(column: Column) {
+    return (
+      <CategoryPanel
+        key={column.id}
+        columnId={column.id}
+        name={column.name}
+        categoryId={column.categoryId}
+        listId={listId}
+        kind={data.list.kind}
+        members={data.members}
+        items={board[column.id] ?? []}
+        itemDragActive={activeType === 'item'}
+        color={column.color}
+        onRecolor={
+          column.categoryId
+            ? (nextColor) =>
+                categoryRecolor.mutate({ id: column.categoryId as string, color: nextColor })
+            : undefined
+        }
+        onRename={
+          column.categoryId
+            ? (nextName) =>
+                categoryRename.mutate({ id: column.categoryId as string, name: nextName })
+            : undefined
+        }
+        onDelete={
+          column.categoryId
+            ? () => {
+                if (
+                  window.confirm(
+                    `Delete category “${column.name}”? Its items move back to Uncategorized.`,
+                  )
+                ) {
+                  categoryDelete.mutate(column.categoryId as string);
+                }
+              }
+            : undefined
+        }
+      />
+    );
+  }
 
   return (
     <main className="container page">
@@ -507,6 +561,7 @@ export function ListPage() {
         <DndContext
           sensors={sensors}
           collisionDetection={collisionDetection}
+          measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
@@ -514,86 +569,13 @@ export function ListPage() {
         >
           <div className="board">
             <SortableContext
-              items={columns.map((column) => `cat-${column.id}`)}
+              items={realCategories.map((column) => `cat-${column.id}`)}
               strategy={verticalListSortingStrategy}
             >
-              {columns.map((column) => (
-                <CategoryPanel
-                  key={column.id}
-                  columnId={column.id}
-                  name={column.name}
-                  categoryId={column.categoryId}
-                  listId={listId}
-                  kind={data.list.kind}
-                  members={data.members}
-                  items={board[column.id] ?? []}
-                  itemDragActive={activeType === 'item'}
-                  color={column.color}
-                  onRecolor={
-                    column.categoryId
-                      ? (nextColor) =>
-                          categoryRecolor.mutate({
-                            id: column.categoryId as string,
-                            color: nextColor,
-                          })
-                      : undefined
-                  }
-                  onRename={
-                    column.categoryId
-                      ? (nextName) =>
-                          categoryRename.mutate({ id: column.categoryId as string, name: nextName })
-                      : undefined
-                  }
-                  onDelete={
-                    column.categoryId
-                      ? () => {
-                          if (
-                            window.confirm(
-                              `Delete category “${column.name}”? Its items move back to Uncategorized.`,
-                            )
-                          ) {
-                            categoryDelete.mutate(column.categoryId as string);
-                          }
-                        }
-                      : undefined
-                  }
-                />
-              ))}
+              {realCategories.map(renderPanel)}
             </SortableContext>
+            {uncategorizedColumn && renderPanel(uncategorizedColumn)}
           </div>
-          <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.2, 0, 0, 1)' }}>
-            {activeItem ? (
-              <div className="item drag-overlay">
-                <div className="item__main">
-                  <span className="drag-handle" aria-hidden="true">
-                    <GripIcon />
-                  </span>
-                  <span className="drag-overlay__title">{activeItem.title}</span>
-                </div>
-              </div>
-            ) : activeColumn ? (
-              <div className="panel drag-overlay">
-                <header
-                  className="panel__header"
-                  style={
-                    activeColumn.color
-                      ? {
-                          background: `color-mix(in srgb, ${activeColumn.color} 14%, var(--surface-2))`,
-                        }
-                      : undefined
-                  }
-                >
-                  <span className="panel__title">
-                    <span className="drag-handle" aria-hidden="true">
-                      <GripIcon />
-                    </span>
-                    <span>{activeColumn.name}</span>
-                    <span className="panel__count">{(board[activeColumn.id] ?? []).length}</span>
-                  </span>
-                </header>
-              </div>
-            ) : null}
-          </DragOverlay>
         </DndContext>
 
         <form className="add-category" onSubmit={onAddCategory}>

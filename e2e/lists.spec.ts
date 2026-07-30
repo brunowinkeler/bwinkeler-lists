@@ -188,7 +188,17 @@ test('reorder items within a bucket', async ({ page }) => {
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
 
   const handles = page.getByRole('button', { name: 'Drag to reorder' });
-  await dragOnto(page, handles.nth(1), handles.nth(0));
+  // Drag the second item's handle up past the first item's midpoint and release.
+  // (Overshoot above the first row so the swap resolves even as it shifts down.)
+  const first = await handles.nth(0).boundingBox();
+  const second = await handles.nth(1).boundingBox();
+  if (!first || !second) throw new Error('handles not found');
+  await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(second.x + second.width / 2, second.y - 10, { steps: 4 });
+  await page.mouse.move(first.x + first.width / 2, first.y - 24, { steps: 16 });
+  await page.waitForTimeout(120);
+  await page.mouse.up();
 
   await expect
     .poll(async () =>
@@ -197,6 +207,39 @@ test('reorder items within a bucket', async ({ page }) => {
         .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
     )
     .toEqual(['Second', 'First']);
+});
+
+test('a small drag keeps items in place (midpoint threshold)', async ({ page }) => {
+  await login(page);
+  const listName = `Tiny ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New item title').fill('First');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(1);
+  await page.getByLabel('New item title').fill('Second');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
+
+  const handles = page.getByRole('button', { name: 'Drag to reorder' });
+  const second = await handles.nth(1).boundingBox();
+  if (!second) throw new Error('handle not found');
+  // Nudge the second item up a little — not past the first item's midpoint — and
+  // drop: the order must stay the same.
+  await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(second.x + second.width / 2, second.y - 10, { steps: 4 });
+  await page.mouse.move(second.x + second.width / 2, second.y - 26, { steps: 6 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+
+  await expect(
+    page
+      .getByLabel('Item title', { exact: true })
+      .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+  ).resolves.toEqual(['First', 'Second']);
 });
 
 test('move an item into a category', async ({ page }) => {
