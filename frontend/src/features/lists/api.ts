@@ -62,6 +62,13 @@ export function deleteCategory(id: string): Promise<void> {
   return apiSend('DELETE', `/categories/${id}`);
 }
 
+export function reorderCategory(
+  id: string,
+  input: { previousId?: string | null; nextId?: string | null },
+): Promise<{ category: CategoryDto }> {
+  return apiSend('PATCH', `/categories/${id}/position`, input);
+}
+
 export function duplicateList(
   id: string,
   input: DuplicateListInput,

@@ -10,8 +10,14 @@ import {
   useSensors,
   type DragEndEvent,
   type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import type { DuplicateListInput, ItemDto, ListDetailDto } from '@bwinkeler-lists/shared';
 import { realtime } from '../../lib/ws-client';
 import {
@@ -25,6 +31,7 @@ import {
   listsKey,
   renameCategory,
   renameList,
+  reorderCategory,
   reorderItem,
 } from './api';
 import { CategoryPanel } from './CategoryPanel';
@@ -93,6 +100,7 @@ export function ListPage() {
   // interaction feels instant; it re-syncs from the query whenever we are idle.
   const [columns, setColumns] = useState<Column[]>([]);
   const [board, setBoard] = useState<Board>({});
+  const [activeType, setActiveType] = useState<'item' | 'category' | null>(null);
   const draggingRef = useRef(false);
 
   useEffect(() => {
@@ -128,11 +136,12 @@ export function ListPage() {
     onSuccess: () => void invalidate(),
   });
 
-  const [name, setName] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const rename = useMutation({
-    mutationFn: () => renameList(listId, name.trim()),
+    mutationFn: () => renameList(listId, nameDraft.trim()),
     onSuccess: () => {
-      setName('');
+      setEditingName(false);
       void invalidate();
     },
   });
@@ -157,6 +166,12 @@ export function ListPage() {
         previousId: vars.previousId,
         nextId: vars.nextId,
       }),
+    onSettled: () => void invalidate(),
+  });
+
+  const categoryReorder = useMutation({
+    mutationFn: (vars: { id: string; previousId: string | null; nextId: string | null }) =>
+      reorderCategory(vars.id, { previousId: vars.previousId, nextId: vars.nextId }),
     onSettled: () => void invalidate(),
   });
 
@@ -197,9 +212,15 @@ export function ListPage() {
     event.preventDefault();
     if (title.trim().length > 0) addItem.mutate();
   }
-  function onRename(event: FormEvent): void {
+  function onRenameSubmit(event: FormEvent): void {
     event.preventDefault();
-    if (name.trim().length > 0) rename.mutate();
+    const next = nameDraft.trim();
+    if (next.length > 0 && next !== data.list.name) rename.mutate();
+    else setEditingName(false);
+  }
+  function startRename(): void {
+    setNameDraft(data.list.name);
+    setEditingName(true);
   }
   function onAddCategory(event: FormEvent): void {
     event.preventDefault();
@@ -214,8 +235,47 @@ export function ListPage() {
     }
   }
 
-  function onDragStart(): void {
+  function onDragStart(event: DragStartEvent): void {
     draggingRef.current = true;
+    setActiveType(String(event.active.id) in board ? 'category' : 'item');
+  }
+
+  function onDragCancel(): void {
+    draggingRef.current = false;
+    setActiveType(null);
+    resync();
+  }
+
+  function handleCategoryDragEnd(activeId: string, overId: string): void {
+    const order = columns.filter((column) => column.categoryId).map((column) => column.id);
+    const oldIndex = order.indexOf(activeId);
+    if (oldIndex < 0) {
+      resync();
+      return;
+    }
+    const overColumn = overId in board ? overId : findColumnIn(board, overId);
+    const newIndex = overColumn && overColumn !== UNCATEGORIZED ? order.indexOf(overColumn) : 0;
+    if (newIndex < 0) {
+      resync();
+      return;
+    }
+    const newOrder = arrayMove(order, oldIndex, newIndex);
+    setColumns((prev) => {
+      const byId = new Map(prev.map((column) => [column.id, column]));
+      const uncategorized = prev.find((column) => column.categoryId === null);
+      const rebuilt: Column[] = uncategorized ? [uncategorized] : [];
+      for (const id of newOrder) {
+        const column = byId.get(id);
+        if (column) rebuilt.push(column);
+      }
+      return rebuilt;
+    });
+    const pos = newOrder.indexOf(activeId);
+    categoryReorder.mutate({
+      id: activeId,
+      previousId: newOrder[pos - 1] ?? null,
+      nextId: newOrder[pos + 1] ?? null,
+    });
   }
 
   function onDragOver(event: DragOverEvent): void {
@@ -223,6 +283,7 @@ export function ListPage() {
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
+    if (activeId in board) return;
     setBoard((prev) => {
       const from = findColumnIn(prev, activeId);
       const to = findColumnIn(prev, overId);
@@ -244,6 +305,7 @@ export function ListPage() {
 
   function onDragEnd(event: DragEndEvent): void {
     draggingRef.current = false;
+    setActiveType(null);
     const { active, over } = event;
     if (!over) {
       resync();
@@ -251,6 +313,11 @@ export function ListPage() {
     }
     const activeId = String(active.id);
     const overId = String(over.id);
+
+    if (activeId in board && activeId !== UNCATEGORIZED) {
+      handleCategoryDragEnd(activeId, overId);
+      return;
+    }
 
     let targetColumn: string | undefined;
     let finalItems: ItemDto[] = [];
@@ -297,7 +364,30 @@ export function ListPage() {
           >
             ← All lists
           </button>
-          <h1>{data.list.name}</h1>
+          {editingName ? (
+            <form className="row" onSubmit={onRenameSubmit}>
+              <input
+                className="title-input grow"
+                aria-label="List name"
+                value={nameDraft}
+                autoFocus
+                onChange={(event) => setNameDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setEditingName(false);
+                }}
+              />
+              <button className="primary" type="submit" disabled={rename.isPending}>
+                Rename
+              </button>
+              <button type="button" className="ghost" onClick={() => setEditingName(false)}>
+                Cancel
+              </button>
+            </form>
+          ) : (
+            <h1 className="editable-title" title="Click to rename" onClick={startRename}>
+              {data.list.name}
+            </h1>
+          )}
           <div className="row">
             <span className="badge accent">{data.list.kind}</span>
             <span className="badge">{data.list.role}</span>
@@ -348,39 +438,46 @@ export function ListPage() {
           onDragStart={onDragStart}
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
+          onDragCancel={onDragCancel}
         >
           <div className="board">
-            {columns.map((column) => (
-              <CategoryPanel
-                key={column.id}
-                columnId={column.id}
-                name={column.name}
-                categoryId={column.categoryId}
-                listId={listId}
-                kind={data.list.kind}
-                members={data.members}
-                items={board[column.id] ?? []}
-                onRename={
-                  column.categoryId
-                    ? (nextName) =>
-                        categoryRename.mutate({ id: column.categoryId as string, name: nextName })
-                    : undefined
-                }
-                onDelete={
-                  column.categoryId
-                    ? () => {
-                        if (
-                          window.confirm(
-                            `Delete category “${column.name}”? Its items move back to Uncategorized.`,
-                          )
-                        ) {
-                          categoryDelete.mutate(column.categoryId as string);
+            <SortableContext
+              items={columns.map((column) => column.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {columns.map((column) => (
+                <CategoryPanel
+                  key={column.id}
+                  columnId={column.id}
+                  name={column.name}
+                  categoryId={column.categoryId}
+                  listId={listId}
+                  kind={data.list.kind}
+                  members={data.members}
+                  items={board[column.id] ?? []}
+                  itemDragActive={activeType === 'item'}
+                  onRename={
+                    column.categoryId
+                      ? (nextName) =>
+                          categoryRename.mutate({ id: column.categoryId as string, name: nextName })
+                      : undefined
+                  }
+                  onDelete={
+                    column.categoryId
+                      ? () => {
+                          if (
+                            window.confirm(
+                              `Delete category “${column.name}”? Its items move back to Uncategorized.`,
+                            )
+                          ) {
+                            categoryDelete.mutate(column.categoryId as string);
+                          }
                         }
-                      }
-                    : undefined
-                }
-              />
-            ))}
+                      : undefined
+                  }
+                />
+              ))}
+            </SortableContext>
           </div>
         </DndContext>
 
@@ -401,22 +498,6 @@ export function ListPage() {
           </button>
         </form>
       </section>
-
-      <details className="card">
-        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>List settings</summary>
-        <form className="row" onSubmit={onRename} style={{ marginTop: 'var(--space-4)' }}>
-          <input
-            className="grow"
-            aria-label="Rename list"
-            placeholder={data.list.name}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          <button type="submit" disabled={rename.isPending || name.trim().length === 0}>
-            Rename
-          </button>
-        </form>
-      </details>
 
       {isOwner && (
         <SharingPanel listId={listId} members={data.members} invitations={data.invitations} />

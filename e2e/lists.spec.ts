@@ -86,3 +86,59 @@ test('duplicate a list copies its items', async ({ page }) => {
   await expect(page.getByRole('heading', { name: `${listName} (copy)` })).toBeVisible();
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('Copy me');
 });
+
+test('rename a list by clicking its title', async ({ page }) => {
+  await login(page);
+  const listName = `Ren ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByRole('heading', { name: listName }).click();
+  const input = page.getByLabel('List name');
+  await expect(input).toBeVisible();
+  const renamed = `${listName} renamed`;
+  await input.fill(renamed);
+  await page.getByRole('button', { name: 'Rename' }).click();
+  await expect(page.getByRole('heading', { name: renamed })).toBeVisible();
+});
+
+test('reorder categories by dragging', async ({ page }) => {
+  await login(page);
+  const listName = `CatOrder ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Alpha');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Alpha', exact: true })).toBeVisible();
+  await page.getByLabel('New category name').fill('Beta');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Beta', exact: true })).toBeVisible();
+
+  // Move Beta above Alpha by dragging its handle.
+  const betaHandle = page.getByRole('button', { name: 'Reorder category “Beta”' });
+  const alphaHandle = page.getByRole('button', { name: 'Reorder category “Alpha”' });
+  const from = await betaHandle.boundingBox();
+  const to = await alphaHandle.boundingBox();
+  if (!from || !to) throw new Error('handles not found');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y - 10, { steps: 4 });
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+  await page.mouse.move(to.x + to.width / 2, to.y - 10, { steps: 6 });
+  await page.mouse.up();
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll('.panel .panel__title')).map((title) => {
+          const el =
+            title.querySelector('button.ghost') ?? title.querySelector('span:not(.panel__count)');
+          return el?.textContent?.trim() ?? '';
+        }),
+      ),
+    )
+    .toEqual(['Uncategorized', 'Beta', 'Alpha']);
+});
