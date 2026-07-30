@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+# Development image shared by the api, web and shared services. It installs
+# every workspace's dependencies (including the native argon2 addon) so the
+# source can be bind-mounted and run with hot reload. Never use in production.
+FROM node:22.14.0-bookworm-slim
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install against the lockfile only; the source is provided via bind mount at
+# runtime and node_modules is preserved by named/anonymous volumes.
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY shared/package.json ./shared/
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+RUN npm ci
+
+CMD ["node", "--version"]

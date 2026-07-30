@@ -1,8 +1,28 @@
 name: bw-lists-dev
 
-# Local development database only. Ports are bound to 127.0.0.1. The api and web
-# services are added in the containerization phase. Do not use these values or
-# this file in production.
+# Full local development stack. Postgres, the API (Fastify, hot-reloaded with
+# tsx) and the web app (Vite dev server) all run in containers, so no Node
+# toolchain is required on the host. Source is bind-mounted for hot reload and
+# node_modules is kept in volumes so the container's Linux install is not
+# shadowed by the host. Ports bind to 127.0.0.1. Never use this file in
+# production (see compose.prod.yaml).
+#
+# Usage (from the repo root):
+#   docker compose -f deploy/compose.dev.yaml up --build
+#   open http://localhost:5173  (login: admin@example.test / dev-password-change-me)
+
+x-dev-build: &dev-build
+  build:
+    context: ..
+    dockerfile: Dockerfile.dev
+
+x-dev-volumes: &dev-volumes
+  volumes:
+    - ..:/app
+    - lists-node-modules:/app/node_modules
+    - /app/shared/node_modules
+    - /app/backend/node_modules
+    - /app/frontend/node_modules
 
 services:
   postgres:
@@ -22,6 +42,57 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: compile the shared package so the api and web can import its dist.
+  shared:
+    <<: [*dev-build, *dev-volumes]
+    command: ['npm', 'run', 'build', '-w', '@bwinkeler-lists/shared']
+
+  api:
+    <<: [*dev-build, *dev-volumes]
+    command:
+      - sh
+      - -c
+      - >-
+        npm run db:migrate -w @bwinkeler-lists/backend &&
+        npm run db:seed -w @bwinkeler-lists/backend &&
+        npm run dev -w @bwinkeler-lists/backend
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: '8080'
+      PUBLIC_ORIGIN: http://localhost:5173
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: ${PGDATABASE:-lists_dev}
+      PGUSER: ${PGUSER:-lists_dev}
+      PGPASSWORD: ${PGPASSWORD:-change-me-in-dev}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      shared:
+        condition: service_completed_successfully
+
+  web:
+    <<: [*dev-build, *dev-volumes]
+    command: ['npm', 'run', 'dev', '-w', '@bwinkeler-lists/frontend']
+    environment:
+      API_PROXY_TARGET: http://api:8080
+      CHOKIDAR_USEPOLLING: 'true'
+    ports:
+      - '127.0.0.1:5173:5173'
+    depends_on:
+      shared:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+
 volumes:
   lists-dev-postgres:
     name: bw-lists-dev-postgres
+  lists-node-modules:
+    name: bw-lists-dev-node-modules
