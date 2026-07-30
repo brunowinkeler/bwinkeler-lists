@@ -23,6 +23,7 @@
     "argon2": "^0.45.1",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.10.0",
+    "fractional-indexing": "^4.0.0",
     "pg": "^8.22.0"
   },
   "devDependencies": {

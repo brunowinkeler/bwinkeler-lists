@@ -8,6 +8,10 @@ import { issueCsrfToken } from './auth/cookies.js';
 import { resolveSession, safeEqual } from './auth/session.js';
 import { registerHealthRoutes } from './health/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
+import { registerItemRoutes } from './modules/items/routes.js';
+import { registerListRoutes } from './modules/lists/routes.js';
+import { registerNotificationRoutes } from './modules/notifications/routes.js';
+import { registerSharingRoutes } from './modules/sharing/routes.js';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -54,6 +58,15 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
 
   await app.register(registerHealthRoutes);
   await app.register(registerAuthRoutes, { prefix: '/api/auth' });
+  await app.register(
+    async (api) => {
+      await api.register(registerListRoutes);
+      await api.register(registerItemRoutes);
+      await api.register(registerSharingRoutes);
+      await api.register(registerNotificationRoutes);
+    },
+    { prefix: '/api' },
+  );
 
   return app;
 }
