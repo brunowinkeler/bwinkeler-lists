@@ -20,10 +20,12 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "test": "vitest run --passWithNoTests",
+    "e2e": "playwright test",
     "validate": "npm run format && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.62.0",
     "eslint": "10.8.0",
     "globals": "17.8.0",
     "prettier": "3.9.6",

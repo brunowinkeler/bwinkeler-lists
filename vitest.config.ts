@@ -1,9 +1,10 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
-// Root test runner. Per-workspace environments (node vs jsdom) are configured
-// as projects are added in their respective phases.
+// Root Vitest runner. Playwright specs under e2e/ are excluded and run via
+// `npm run e2e` instead.
 export default defineConfig({
   test: {
     passWithNoTests: true,
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 });

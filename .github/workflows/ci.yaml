@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lists_test
+          POSTGRES_PASSWORD: lists_test
+          POSTGRES_DB: lists_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lists_test -d lists_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: development
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: lists_test
+      PGUSER: lists_test
+      PGPASSWORD: lists_test
+      PUBLIC_ORIGIN: http://localhost:5173
+      SESSION_SECRET: ci-session-secret-please-change
+      LOG_LEVEL: silent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: npm run db:migrate -w @bwinkeler-lists/backend
+      - run: npm run db:seed -w @bwinkeler-lists/backend
+      - run: npm run smoke -w @bwinkeler-lists/backend
+      - run: npm run smoke:ws -w @bwinkeler-lists/backend
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: validate
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lists_test
+          POSTGRES_PASSWORD: lists_test
+          POSTGRES_DB: lists_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lists_test -d lists_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: lists_test
+      PGUSER: lists_test
+      PGPASSWORD: lists_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @bwinkeler-lists/shared
+      - run: npx playwright install --with-deps chromium
+      - run: npm run db:migrate -w @bwinkeler-lists/backend
+      - run: npm run db:seed -w @bwinkeler-lists/backend
+      - run: npm run e2e
+
+  images:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t lists-api:ci .
+      - run: docker build -f frontend/Dockerfile -t lists-web:ci .
