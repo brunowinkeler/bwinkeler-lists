@@ -30,7 +30,10 @@ export async function registerWebSocketRoutes(app: FastifyInstance): Promise<voi
       return;
     }
     const origin = request.headers.origin;
-    if (origin && origin !== config.PUBLIC_ORIGIN) {
+    // Enforce same-origin WebSocket upgrades in production. In development the
+    // app is often opened from a LAN IP (e.g. to test on another device), so
+    // the strict origin check is relaxed there.
+    if (origin && config.NODE_ENV === 'production' && origin !== config.PUBLIC_ORIGIN) {
       socket.close(1008, 'Forbidden origin');
       return;
     }

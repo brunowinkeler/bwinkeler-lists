@@ -84,7 +84,10 @@ services:
       API_PROXY_TARGET: http://api:8080
       CHOKIDAR_USEPOLLING: 'true'
     ports:
-      - '127.0.0.1:5173:5173'
+      # Published on all interfaces so other devices on the LAN can reach it.
+      # The API and Postgres stay bound to 127.0.0.1 (the SPA proxies to the
+      # api service internally over the compose network).
+      - '0.0.0.0:5173:5173'
     depends_on:
       shared:
         condition: service_completed_successfully
