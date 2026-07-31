@@ -51,6 +51,33 @@ See `docs/PLATFORM_ARCHITECTURE.md` §19 for the deploy sequence. This service:
 Infrastructure tasks (database and roles, Caddy fragment, DNS, backup) live in
 the `bwinkeler-infra` repository and are proposed there separately.
 
+### Repeatable deploy
+
+Install `deploy/compose.prod.yaml`, `deploy/deploy.sh`, and
+`deploy/create-user.sh` together in `/srv/bwinkeler/apps/lists`, then run:
+
+```sh
+cd /srv/bwinkeler/apps/lists
+./deploy.sh 0.1.4
+```
+
+The script pulls immutable images, runs the one-shot migration job, recreates
+the services, waits for healthchecks, verifies the exact image tags, and rolls
+back to the previous image version on failure. The previous `.env` is retained
+as `.env.previous`.
+
+### Create an account
+
+```sh
+cd /srv/bwinkeler/apps/lists
+./create-user.sh           # regular account
+./create-user.sh --admin   # administrative account
+```
+
+The script prompts for email, display name, and a hidden/confirmed password.
+It creates an account; list membership is then granted by inviting that email
+from the list's Sharing section.
+
 ## Health and rollback
 
 - Liveness: `GET /health/live`. Readiness: `GET /health/ready`.

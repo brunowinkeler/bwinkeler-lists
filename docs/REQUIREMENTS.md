@@ -206,16 +206,16 @@ assumed.
 
 ### 3.9 Quality (LST-QUA) — ISO/IEC 25010
 
-| ID          | Requirement                                                                                                                                              | Trace   | Verify |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
-| LST-QUA-001 | The system shall open a list of up to 500 items with a load time ≤ 1.5 s p95 on the target VPS.                                                          | O1      | T      |
-| LST-QUA-002 | The system shall support at least 50 accounts, 20 members per list, 1000 items per list, and 20 concurrent WebSocket clients without functional failure. | §2, §23 | T      |
-| LST-QUA-003 | The system shall meet a recovery point objective ≤ 24 h and a recovery time objective ≤ 4 h via the platform backup and restore.                         | §20     | A      |
-| LST-QUA-004 | After any disconnect and reconnect cycle, all connected clients of a list shall converge to identical state.                                             | A5, A6  | T      |
-| LST-QUA-005 | The web UI shall be usable from a 320 px viewport up to desktop without horizontal overflow.                                                             | A10     | D      |
-| LST-QUA-006 | The web UI shall conform to WCAG 2.2 level AA.                                                                                                           | A10     | A      |
-| LST-QUA-007 | The application shall satisfy the platform portability checklist.                                                                                        | §25     | I      |
-| LST-QUA-008 | The UI shall present all content in English in v1.                                                                                                       | A10     | I      |
+| ID          | Requirement                                                                                                                                                | Trace   | Verify |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| LST-QUA-001 | The system shall open a list of up to 500 items with a load time ≤ 1.5 s p95 on the target VPS.                                                            | O1      | T      |
+| LST-QUA-002 | The system shall support at least 50 accounts, 20 members per list, 1000 items per list, and 20 concurrent WebSocket clients without functional failure.   | §2, §23 | T      |
+| LST-QUA-003 | The system shall meet a recovery point objective ≤ 24 h and a recovery time objective ≤ 4 h via the platform backup and restore.                           | §20     | A      |
+| LST-QUA-004 | After any disconnect and reconnect cycle, all connected clients of a list shall converge to identical state.                                               | A5, A6  | T      |
+| LST-QUA-005 | The web UI shall be usable from a 320 px viewport up to desktop without horizontal overflow, including viewport-contained notification and color popovers. | A10     | D      |
+| LST-QUA-006 | The web UI shall conform to WCAG 2.2 level AA.                                                                                                             | A10     | A      |
+| LST-QUA-007 | The application shall satisfy the platform portability checklist.                                                                                          | §25     | I      |
+| LST-QUA-008 | The UI shall present all content in English in v1.                                                                                                         | A10     | I      |
 
 ### 3.10 Security and privacy (LST-SEC)
 
@@ -233,18 +233,19 @@ assumed.
 
 ### 3.11 Operations and deployment (LST-OPS)
 
-| ID          | Requirement                                                                                                                                                     | Trace     | Verify |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ |
-| LST-OPS-001 | The application shall deploy as immutable, versioned images built in CI, with no build on the VPS.                                                              | §18       | I      |
-| LST-OPS-002 | The application containers shall not publish host ports and shall join the external networks `bw-edge` and `bw-data` plus a private network `bw-lists-private`. | §7        | I      |
-| LST-OPS-003 | The application shall expose the globally unique network aliases `lists-web` and `lists-api`.                                                                   | §5        | I      |
-| LST-OPS-004 | The backend shall expose `/health/live` and `/health/ready` endpoints that reveal no secrets, versions, or stack traces.                                        | §14.1     | T      |
-| LST-OPS-005 | The backend shall shut down gracefully on SIGTERM, ceasing acceptance of new traffic before finishing in-flight work.                                           | §14       | T      |
-| LST-OPS-006 | The backend shall emit structured logs to stdout and stderr.                                                                                                    | §22.2     | I      |
-| LST-OPS-007 | Public routing shall serve `/` to `lists-web` and `/api` and `/ws` to `lists-api` on `lists.bwinkeler.com`, configured in the infrastructure repository.        | §9        | T      |
-| LST-OPS-008 | The repository shall include a completed `docs/SERVICE_MANIFEST.md` and a current copy of the platform architecture.                                            | §1.1, §26 | I      |
-| LST-OPS-009 | The database `lists_db` shall be included in the platform daily backup.                                                                                         | §20       | I      |
-| LST-OPS-010 | Schema changes shall be applied by a single migration job using the migrator role before rollout.                                                               | §11.6     | T      |
+| ID          | Requirement                                                                                                                                                         | Trace     | Verify |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------ |
+| LST-OPS-001 | The application shall deploy as immutable, versioned images built in CI, with no build on the VPS.                                                                  | §18       | I      |
+| LST-OPS-002 | The application containers shall not publish host ports and shall join the external networks `bw-edge` and `bw-data` plus a private network `bw-lists-private`.     | §7        | I      |
+| LST-OPS-003 | The application shall expose the globally unique network aliases `lists-web` and `lists-api`.                                                                       | §5        | I      |
+| LST-OPS-004 | The backend shall expose `/health/live` and `/health/ready` endpoints that reveal no secrets, versions, or stack traces.                                            | §14.1     | T      |
+| LST-OPS-005 | The backend shall shut down gracefully on SIGTERM, ceasing acceptance of new traffic before finishing in-flight work.                                               | §14       | T      |
+| LST-OPS-006 | The backend shall emit structured logs to stdout and stderr.                                                                                                        | §22.2     | I      |
+| LST-OPS-007 | Public routing shall serve `/` to `lists-web` and `/api` and `/ws` to `lists-api` on `lists.bwinkeler.com`, configured in the infrastructure repository.            | §9        | T      |
+| LST-OPS-008 | The repository shall include a completed `docs/SERVICE_MANIFEST.md` and a current copy of the platform architecture.                                                | §1.1, §26 | I      |
+| LST-OPS-009 | The database `lists_db` shall be included in the platform daily backup.                                                                                             | §20       | I      |
+| LST-OPS-010 | Schema changes shall be applied by a single migration job using the migrator role before rollout.                                                                   | §11.6     | T      |
+| LST-OPS-011 | The repository shall provide repeatable production scripts for versioned deployment with health verification and rollback, and for securely creating user accounts. | §19; §23  | I      |
 
 ### 3.12 Constraints (LST-CON)
 
