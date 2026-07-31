@@ -106,6 +106,7 @@ test('create a list, add and complete an item, and persist across reload', async
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('First item');
 
   await page.getByRole('checkbox').first().click();
+  await expect(page.getByRole('checkbox').first()).toBeChecked();
   await page.reload();
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('First item');
   await expect(page.getByRole('checkbox').first()).toBeChecked();
