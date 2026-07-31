@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { generateKeyBetween } from 'fractional-indexing';
 import type { Database } from '../../db/client.js';
 import { items } from '../../db/schema.js';
@@ -20,7 +20,7 @@ export async function lastItemPosition(
         categoryId === null ? isNull(items.categoryId) : eq(items.categoryId, categoryId),
       ),
     )
-    .orderBy(desc(items.position))
+    .orderBy(sql`${items.position} COLLATE "C" DESC`)
     .limit(1);
   return rows[0]?.position ?? null;
 }

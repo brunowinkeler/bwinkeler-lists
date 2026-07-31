@@ -33,6 +33,7 @@
 - Database: `lists_db`
 - Runtime role: `lists_runtime`
 - Migrator role: `lists_migrator`
+- Position ordering: binary `COLLATE "C"` (required by fractional-indexing keys)
 - Migration command: `node dist/db/migrate.js`
 - Required extensions: none
 - Expected initial size: < 100 MB

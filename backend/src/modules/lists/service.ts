@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type {
   CategoryDto,
   InvitationDto,
@@ -107,13 +107,13 @@ export async function loadListDetail(
     .select()
     .from(items)
     .where(eq(items.listId, listId))
-    .orderBy(asc(items.position));
+    .orderBy(sql`${items.position} COLLATE "C" ASC`);
 
   const categoryRows = await db
     .select()
     .from(categories)
     .where(eq(categories.listId, listId))
-    .orderBy(asc(categories.position));
+    .orderBy(sql`${categories.position} COLLATE "C" ASC`);
 
   let invitations: InvitationDto[] = [];
   if (role === 'owner') {
@@ -181,7 +181,7 @@ export async function duplicateList(
       .select()
       .from(categories)
       .where(eq(categories.listId, sourceListId))
-      .orderBy(asc(categories.position));
+      .orderBy(sql`${categories.position} COLLATE "C" ASC`);
 
     const categoryIdMap = new Map<string, string>();
     for (const category of sourceCategories) {
@@ -206,7 +206,7 @@ export async function duplicateList(
           ? eq(items.listId, sourceListId)
           : and(eq(items.listId, sourceListId), eq(items.status, 'open')),
       )
-      .orderBy(asc(items.position));
+      .orderBy(sql`${items.position} COLLATE "C" ASC`);
 
     if (sourceItems.length > 0) {
       await tx.insert(items).values(

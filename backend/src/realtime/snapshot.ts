@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { ListSnapshot } from '@bwinkeler-lists/shared';
 import type { Database } from '../db/client.js';
 import { categories, items, listMembers, lists, users } from '../db/schema.js';
@@ -26,13 +26,13 @@ export async function loadListSnapshot(db: Database, listId: string): Promise<Li
     .select()
     .from(items)
     .where(eq(items.listId, listId))
-    .orderBy(asc(items.position));
+    .orderBy(sql`${items.position} COLLATE "C" ASC`);
 
   const categoryRows = await db
     .select()
     .from(categories)
     .where(eq(categories.listId, listId))
-    .orderBy(asc(categories.position));
+    .orderBy(sql`${categories.position} COLLATE "C" ASC`);
 
   return {
     listId: list.id,

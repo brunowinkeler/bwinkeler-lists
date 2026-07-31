@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../../db/client.js';
 import { categories } from '../../db/schema.js';
 
@@ -8,7 +8,7 @@ export async function lastCategoryPosition(db: Database, listId: string): Promis
     .select({ position: categories.position })
     .from(categories)
     .where(eq(categories.listId, listId))
-    .orderBy(desc(categories.position))
+    .orderBy(sql`${categories.position} COLLATE "C" DESC`)
     .limit(1);
   return rows[0]?.position ?? null;
 }

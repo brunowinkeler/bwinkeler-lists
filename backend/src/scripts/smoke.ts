@@ -26,6 +26,27 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const { pool, db } = createDatabase(config);
   await waitForDatabase(pool);
+
+  const positionCollations = await pool.query<{
+    table_name: string;
+    collation_name: string | null;
+  }>(`
+    SELECT table_name, collation_name
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN ('categories', 'items')
+      AND column_name = 'position'
+    ORDER BY table_name
+  `);
+  assert.deepEqual(
+    positionCollations.rows,
+    [
+      { table_name: 'categories', collation_name: 'C' },
+      { table_name: 'items', collation_name: 'C' },
+    ],
+    'fractional positions use binary C collation',
+  );
+
   const app = await buildApp(config, db);
   await app.ready();
 
@@ -95,6 +116,50 @@ async function main(): Promise<void> {
   assert.equal(res.statusCode, 201, 'create item');
   const itemId = (JSON.parse(res.body) as { item: { id: string } }).item.id;
 
+  const categoryIds: string[] = [];
+  for (const name of ['First category', 'Second category', 'Third category']) {
+    res = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${listId}/categories`,
+      headers: auth(),
+      payload: { name },
+    });
+    assert.equal(res.statusCode, 201, `create ${name}`);
+    categoryIds.push((JSON.parse(res.body) as { category: { id: string } }).category.id);
+  }
+  const [firstCategoryId, secondCategoryId, thirdCategoryId] = categoryIds;
+  assert.ok(firstCategoryId && secondCategoryId && thirdCategoryId, 'three categories created');
+
+  res = await app.inject({
+    method: 'PATCH',
+    url: `/api/categories/${thirdCategoryId}/position`,
+    headers: auth(),
+    payload: { previousId: null, nextId: firstCategoryId },
+  });
+  assert.equal(res.statusCode, 200, 'move category across Z/a fractional-index boundary');
+
+  const extraItemIds: string[] = [];
+  for (const title of ['Second smoke item', 'Third smoke item']) {
+    res = await app.inject({
+      method: 'POST',
+      url: `/api/lists/${listId}/items`,
+      headers: auth(),
+      payload: { title },
+    });
+    assert.equal(res.statusCode, 201, `create ${title}`);
+    extraItemIds.push((JSON.parse(res.body) as { item: { id: string } }).item.id);
+  }
+  const thirdItemId = extraItemIds[1];
+  assert.ok(thirdItemId, 'third item created');
+
+  res = await app.inject({
+    method: 'PATCH',
+    url: `/api/items/${thirdItemId}/position`,
+    headers: auth(),
+    payload: { categoryId: null, previousId: null, nextId: itemId },
+  });
+  assert.equal(res.statusCode, 200, 'move item across Z/a fractional-index boundary');
+
   res = await app.inject({
     method: 'PATCH',
     url: `/api/items/${itemId}`,
@@ -111,11 +176,22 @@ async function main(): Promise<void> {
   assert.equal(res.statusCode, 200, 'list detail');
   const detail = JSON.parse(res.body) as {
     list: { version: number };
-    items: { status: string }[];
+    categories: { id: string }[];
+    items: { id: string; status: string }[];
     members: unknown[];
   };
-  assert.equal(detail.items.length, 1, 'one item present');
-  assert.equal(detail.items[0]?.status, 'done', 'item is done');
+  assert.equal(detail.items.length, 3, 'three items present');
+  assert.equal(detail.items.find((item) => item.id === itemId)?.status, 'done', 'item is done');
+  assert.deepEqual(
+    detail.categories.map((category) => category.id),
+    [thirdCategoryId, firstCategoryId, secondCategoryId],
+    'category moved to the top using binary key order',
+  );
+  assert.deepEqual(
+    detail.items.map((item) => item.id),
+    [thirdItemId, itemId, extraItemIds[0]],
+    'item moved to the top using binary key order',
+  );
   assert.ok(detail.list.version >= 2, 'list version bumped by mutations');
   assert.equal(detail.members.length, 1, 'owner is a member');
 

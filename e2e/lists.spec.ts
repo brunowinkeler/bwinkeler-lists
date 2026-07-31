@@ -38,6 +38,43 @@ async function dragOnto(page: Page, source: Locator, target: Locator): Promise<v
   await page.mouse.up();
 }
 
+async function dragUpWithScroll(
+  page: Page,
+  source: Locator,
+  target: Locator,
+  options: { dropInTopGap?: boolean } = {},
+): Promise<void> {
+  await source.scrollIntoViewIfNeeded();
+  const from = await source.boundingBox();
+  if (!from) throw new Error('source bounding box missing');
+  const startX = from.x + from.width / 2;
+  const startY = from.y + from.height / 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX, startY - 10, { steps: 4 });
+  await page.waitForTimeout(80);
+
+  // Keep the drag active while scrolling toward an off-screen target. This is
+  // the production case that exposed viewport/collation ordering differences.
+  await page.mouse.move(startX, 90, { steps: 12 });
+  await page.mouse.wheel(0, -2000);
+  await page.waitForTimeout(250);
+
+  if (options.dropInTopGap) {
+    // Sortable siblings move down to expose the first insertion slot. Keep the
+    // pointer in that stable gap instead of chasing the transformed first row.
+    await page.mouse.up();
+    return;
+  }
+
+  const to = await target.boundingBox();
+  if (!to) throw new Error('target bounding box missing after scroll');
+  await page.mouse.move(to.x + to.width / 2, to.y - 12, { steps: 12 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+}
+
 test('create a list, add and complete an item, and persist across reload', async ({ page }) => {
   await login(page);
   const listName = `E2E ${Date.now()}`;
@@ -178,19 +215,19 @@ test('reorder categories by dragging', async ({ page }) => {
   await page.getByLabel('New category name').fill('Beta');
   await page.getByRole('button', { name: 'Add category' }).click();
   await expect(page.getByRole('button', { name: 'Beta', exact: true })).toBeVisible();
+  await page.getByLabel('New category name').fill('Gamma');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Gamma', exact: true })).toBeVisible();
 
-  // Move Beta above Alpha by dragging its handle.
-  const betaHandle = page.getByRole('button', { name: 'Reorder category “Beta”' });
+  // Simulate production-sized panels so Gamma starts well below Alpha.
+  await page.locator('.panel:not(.panel--uncategorized) .panel__body').evaluateAll((bodies) => {
+    for (const body of bodies) (body as HTMLElement).style.minHeight = '320px';
+  });
+
+  // Move Gamma from third to first, crossing an intervening category.
+  const gammaHandle = page.getByRole('button', { name: 'Reorder category “Gamma”' });
   const alphaHandle = page.getByRole('button', { name: 'Reorder category “Alpha”' });
-  const from = await betaHandle.boundingBox();
-  const to = await alphaHandle.boundingBox();
-  if (!from || !to) throw new Error('handles not found');
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2, from.y - 10, { steps: 4 });
-  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
-  await page.mouse.move(to.x + to.width / 2, to.y - 10, { steps: 6 });
-  await page.mouse.up();
+  await dragUpWithScroll(page, gammaHandle, alphaHandle, { dropInTopGap: true });
 
   await expect
     .poll(async () =>
@@ -202,7 +239,20 @@ test('reorder categories by dragging', async ({ page }) => {
         }),
       ),
     )
-    .toEqual(['Beta', 'Alpha', 'Uncategorized']);
+    .toEqual(['Gamma', 'Alpha', 'Beta', 'Uncategorized']);
+
+  await page.reload();
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll('.panel .panel__title')).map((title) => {
+          const el =
+            title.querySelector('button.ghost') ?? title.querySelector('span:not(.panel__count)');
+          return el?.textContent?.trim() ?? '';
+        }),
+      ),
+    )
+    .toEqual(['Gamma', 'Alpha', 'Beta', 'Uncategorized']);
 });
 
 test('reorder items within a bucket', async ({ page }) => {
@@ -218,19 +268,13 @@ test('reorder items within a bucket', async ({ page }) => {
   await page.getByLabel('New item title').fill('Second');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
+  await page.getByLabel('New item title').fill('Third');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(3);
 
   const handles = page.getByRole('button', { name: 'Drag to reorder' });
-  // Drag the second item's handle up past the first item's midpoint and release.
-  // (Overshoot above the first row so the swap resolves even as it shifts down.)
-  const first = await handles.nth(0).boundingBox();
-  const second = await handles.nth(1).boundingBox();
-  if (!first || !second) throw new Error('handles not found');
-  await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(second.x + second.width / 2, second.y - 10, { steps: 4 });
-  await page.mouse.move(first.x + first.width / 2, first.y - 24, { steps: 16 });
-  await page.waitForTimeout(120);
-  await page.mouse.up();
+  // Drag the third item's handle up past the first item's midpoint and release.
+  await dragUpWithScroll(page, handles.nth(2), handles.nth(0));
 
   await expect
     .poll(async () =>
@@ -238,7 +282,16 @@ test('reorder items within a bucket', async ({ page }) => {
         .getByLabel('Item title', { exact: true })
         .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
     )
-    .toEqual(['Second', 'First']);
+    .toEqual(['Third', 'First', 'Second']);
+
+  await page.reload();
+  await expect
+    .poll(async () =>
+      page
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+    )
+    .toEqual(['Third', 'First', 'Second']);
 });
 
 test('a small drag keeps items in place (midpoint threshold)', async ({ page }) => {

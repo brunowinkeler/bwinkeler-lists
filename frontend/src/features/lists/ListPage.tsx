@@ -233,8 +233,17 @@ export function ListPage() {
         const remaining = order.filter((id) => id !== activeDragId);
         const insertionIndex = remaining.reduce((index, id) => {
           const columnId = id.slice(4);
+          const targetId = `${CATEGORY_TARGET_PREFIX}${columnId}`;
+          const targetNode = args.droppableContainers.find(
+            (container) => String(container.id) === targetId,
+          )?.node.current;
+          // Auxiliary header targets live inside transformed sortable panels.
+          // dnd-kit's cached transform-agnostic rect describes their original
+          // slot, not the visible header users follow after siblings move. The
+          // live rect includes both the current transform and window scrolling.
           const rect =
-            args.droppableRects.get(`${CATEGORY_TARGET_PREFIX}${columnId}`) ??
+            targetNode?.getBoundingClientRect() ??
+            args.droppableRects.get(targetId) ??
             args.droppableRects.get(id);
           return rect && args.pointerCoordinates!.y > rect.top + rect.height / 2
             ? index + 1
