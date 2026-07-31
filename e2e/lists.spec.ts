@@ -68,6 +68,13 @@ async function dragUpWithScroll(
     return;
   }
 
+  // Wheel distance maps differently across CI/browser platforms. Keep the
+  // pointer pressed but center the destination before reading its live box so
+  // the final move always dispatches inside the viewport.
+  await target.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }),
+  );
+  await page.waitForTimeout(150);
   const to = await target.boundingBox();
   if (!to) throw new Error('target bounding box missing after scroll');
   await page.mouse.move(to.x + to.width / 2, to.y - 12, { steps: 12 });
@@ -275,6 +282,7 @@ test('reorder items within a bucket', async ({ page }) => {
   await page.getByLabel('New item title').fill('First');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
   await page.getByLabel('New item title').fill('Second');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
