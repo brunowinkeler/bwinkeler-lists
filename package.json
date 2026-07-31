@@ -1,6 +1,6 @@
 {
   "name": "bwinkeler-lists",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "description": "Collaborative shared-lists application (service_id: lists) for the bwinkeler.com platform.",
