@@ -94,6 +94,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 
 test('create a list, add and complete an item, and persist across reload', async ({ page }) => {
   await login(page);
+  await expect(page.getByLabel('Kind')).toHaveValue('simple');
   const listName = `E2E ${Date.now()}`;
   await page.getByLabel('New list name').fill(listName);
   await page.getByRole('button', { name: 'Create' }).click();
@@ -108,6 +109,26 @@ test('create a list, add and complete an item, and persist across reload', async
   await page.reload();
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('First item');
   await expect(page.getByRole('checkbox').first()).toBeChecked();
+});
+
+test('desktop content uses a focused narrow column', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+
+  const dimensions = await page.evaluate(() => {
+    const container = document.querySelector('main.container')?.getBoundingClientRect();
+    const header = document.querySelector('.app-header__inner')?.getBoundingClientRect();
+    return {
+      containerWidth: container?.width ?? 0,
+      containerLeft: container?.left ?? 0,
+      headerWidth: header?.width ?? 0,
+    };
+  });
+
+  expect(dimensions.containerWidth).toBeLessThanOrEqual(760);
+  expect(dimensions.headerWidth).toBeLessThanOrEqual(760);
+  expect(dimensions.containerLeft).toBeGreaterThanOrEqual(300);
+  await expectNoHorizontalOverflow(page);
 });
 
 test('realtime: a second browser context sees a newly added item', async ({ browser }) => {

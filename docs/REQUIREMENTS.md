@@ -122,6 +122,7 @@ assumed.
 | LST-LST-009 | The system shall allow a user to own and be a member of multiple lists simultaneously.                                                                                                                                                                              | O1              | T      |
 | LST-LST-010 | The system shall allow a user with access to a list to duplicate it, copying its categories and items, with options to exclude completed items or to reset copied items to open; the copy shall be owned by the duplicating user and shall not copy item assignees. | O5; A16         | T      |
 | LST-LST-011 | The system shall allow a member to pin or unpin a list for their own account and shall present that user's pinned lists before their other lists.                                                                                                                   | O5; A17         | T      |
+| LST-LST-012 | The list-creation form shall select the `simple` list kind by default while allowing the user to choose `task`.                                                                                                                                                     | O1; A1          | T      |
 
 ### 3.3 Items (LST-ITM)
 

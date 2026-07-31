@@ -11,7 +11,7 @@ export function ListsOverviewPage() {
   const navigate = useNavigate();
   const lists = useQuery({ queryKey: listsKey, queryFn: fetchLists });
   const [name, setName] = useState('');
-  const [kind, setKind] = useState<ListKind>('task');
+  const [kind, setKind] = useState<ListKind>('simple');
 
   const create = useMutation({
     mutationFn: () => createList({ name: name.trim(), kind }),
@@ -92,8 +92,8 @@ export function ListsOverviewPage() {
                 value={kind}
                 onChange={(event) => setKind(event.target.value as ListKind)}
               >
-                <option value="task">Task list</option>
                 <option value="simple">Simple list</option>
+                <option value="task">Task list</option>
               </select>
             </div>
             <button className="primary" type="submit" disabled={create.isPending}>
