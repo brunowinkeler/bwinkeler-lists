@@ -36,7 +36,7 @@ export function NotificationsMenu() {
   useDetailsOutsideClose(detailsRef);
 
   return (
-    <details ref={detailsRef} className="popover">
+    <details ref={detailsRef} className="popover notifications-menu">
       <summary
         className="icon-btn notif-trigger"
         aria-label={`Notifications, ${unread} unread`}
@@ -45,7 +45,7 @@ export function NotificationsMenu() {
         <BellIcon />
         {unread > 0 && <span className="badge-count">{unread}</span>}
       </summary>
-      <div className="popover__panel">
+      <div className="popover__panel notifications-menu__panel">
         {items.length === 0 ? (
           <p className="muted" style={{ padding: 'var(--space-3)' }}>
             No notifications

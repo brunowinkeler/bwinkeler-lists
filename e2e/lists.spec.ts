@@ -75,6 +75,16 @@ async function dragUpWithScroll(
   await page.mouse.up();
 }
 
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    )
+    .toBe(true);
+}
+
 test('create a list, add and complete an item, and persist across reload', async ({ page }) => {
   await login(page);
   const listName = `E2E ${Date.now()}`;
@@ -413,4 +423,38 @@ test('pinning a list moves it to the top', async ({ page }) => {
   // Persists across reload.
   await page.reload();
   await expect(pinnedSection.getByText(name, { exact: true })).toBeVisible();
+});
+
+test('mobile layout stays inside an iPhone 13 viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewport).toContain('maximum-scale=1');
+  expect(viewport).toContain('user-scalable=no');
+  await expectNoHorizontalOverflow(page);
+
+  await page.locator('summary[aria-label^="Notifications"]').click();
+  const notifications = page.locator('.notifications-menu__panel');
+  await expect(notifications).toBeVisible();
+  const notificationBox = await notifications.boundingBox();
+  expect(notificationBox).not.toBeNull();
+  expect(notificationBox!.x).toBeGreaterThanOrEqual(0);
+  expect(notificationBox!.x + notificationBox!.width).toBeLessThanOrEqual(390);
+  await page.locator('summary[aria-label^="Notifications"]').click();
+
+  const listName = `Mobile ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+  await page.getByLabel('New category name').fill('Mobile category');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await page.getByLabel('Change color of category “Mobile category”').click();
+
+  const colorPicker = page.locator('.color-picker__panel:visible');
+  const colorBox = await colorPicker.boundingBox();
+  expect(colorBox).not.toBeNull();
+  expect(colorBox!.x).toBeGreaterThanOrEqual(0);
+  expect(colorBox!.x + colorBox!.width).toBeLessThanOrEqual(390);
+  await expectNoHorizontalOverflow(page);
 });

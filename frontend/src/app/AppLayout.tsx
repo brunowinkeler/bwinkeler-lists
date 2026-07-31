@@ -28,7 +28,7 @@ export function AppLayout() {
           <Link to="/" className="brand" aria-label={`${APP_NAME} home`}>
             <BrandMark />
           </Link>
-          <div className="row">
+          <div className="app-header__actions">
             <ThemeToggle />
             <NotificationsMenu />
             <span className="user-chip">
@@ -38,7 +38,7 @@ export function AppLayout() {
               <span className="muted">{displayName}</span>
             </span>
             <button
-              className="ghost btn-sm"
+              className="ghost btn-sm app-header__logout"
               onClick={onLogout}
               disabled={logout.isPending}
               aria-label="Sign out"
