@@ -97,6 +97,38 @@ test('create a category and see it as a panel', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Produce', exact: true })).toBeVisible();
 });
 
+test('quick-add creates an item directly in a category', async ({ page }) => {
+  await login(page);
+  const listName = `QuickAdd ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Fruit');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Fruit', exact: true })).toBeVisible();
+
+  const fruitPanel = page.locator('.panel', {
+    has: page.getByRole('button', { name: 'Fruit', exact: true }),
+  });
+  await fruitPanel.getByRole('button', { name: 'Add item to “Fruit”' }).click();
+  await fruitPanel.getByLabel('New item for “Fruit”').fill('Discard this draft');
+  await page.getByRole('heading', { name: listName }).click();
+  await expect(fruitPanel.getByLabel('New item for “Fruit”')).toHaveCount(0);
+  await expect(fruitPanel.getByRole('button', { name: 'Add item to “Fruit”' })).toBeVisible();
+  await expect(fruitPanel.getByLabel('Item title', { exact: true })).toHaveCount(0);
+
+  await fruitPanel.getByRole('button', { name: 'Add item to “Fruit”' }).click();
+  await fruitPanel.getByLabel('New item for “Fruit”').fill('Banana');
+  await fruitPanel.getByLabel('New item for “Fruit”').press('Enter');
+
+  await expect(fruitPanel.getByLabel('Item title', { exact: true })).toHaveValue('Banana');
+  await expect(page.locator('.panel--uncategorized').getByLabel('Item title')).toHaveCount(0);
+
+  await page.reload();
+  await expect(fruitPanel.getByLabel('Item title', { exact: true })).toHaveValue('Banana');
+});
+
 test('duplicate a list copies its items', async ({ page }) => {
   await login(page);
   const listName = `Dup ${Date.now()}`;

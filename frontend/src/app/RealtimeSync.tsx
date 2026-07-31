@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { ListDetailDto, ListSnapshot } from '@bwinkeler-lists/shared';
 import { realtime } from '../lib/ws-client';
 
-function mergeSnapshot(
+export function mergeSnapshot(
   previous: ListDetailDto | undefined,
   snapshot: ListSnapshot,
 ): ListDetailDto | undefined {
@@ -18,6 +18,7 @@ function mergeSnapshot(
       version: snapshot.version,
     },
     members: snapshot.members,
+    categories: snapshot.categories,
     items: snapshot.items,
   };
 }

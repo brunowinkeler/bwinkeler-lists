@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   MeasuringStrategy,
   PointerSensor,
@@ -43,9 +44,10 @@ import {
 import { CategoryPanel } from './CategoryPanel';
 import { DuplicateDialog } from './DuplicateDialog';
 import { SharingPanel } from '../sharing/SharingPanel';
-import { CopyIcon, PlusIcon } from '../../components/icons';
+import { CopyIcon, GripIcon, PlusIcon } from '../../components/icons';
 
 const UNCATEGORIZED = 'uncategorized';
+const CATEGORY_TARGET_PREFIX = 'cat-target-';
 
 interface Column {
   id: string;
@@ -110,6 +112,7 @@ export function ListPage() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [board, setBoard] = useState<Board>({});
   const [activeType, setActiveType] = useState<'item' | 'category' | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const draggingRef = useRef(false);
   // The item's bucket + index when the drag started, used to detect a drop back
   // in the same place (so we don't reorder when nothing actually changed).
@@ -124,11 +127,8 @@ export function ListPage() {
 
   const [title, setTitle] = useState('');
   const addItem = useMutation({
-    mutationFn: () => createItem(listId, { title: title.trim() }),
-    onSuccess: () => {
-      setTitle('');
-      void invalidate();
-    },
+    mutationFn: (input: { title: string; categoryId: string | null }) => createItem(listId, input),
+    onSuccess: () => void invalidate(),
   });
 
   const [newCategory, setNewCategory] = useState('');
@@ -206,26 +206,44 @@ export function ListPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+  const categorySortableIds = useMemo(
+    () => columns.filter((column) => column.categoryId).map((column) => `cat-${column.id}`),
+    [columns],
+  );
 
-  // Multi-container collision detection. Categories collide only with other
-  // categories. For items we find the bucket under the pointer, then pick the
-  // item whose CENTER is closest to the dragged item's center — so a neighbour
-  // only yields its slot once the drag passes its midpoint (instead of the
-  // instant the pointer touches its edge).
+  // Multi-container collision detection with an explicit 50% threshold. The
+  // insertion slot advances only after the POINTER crosses a target's vertical
+  // midpoint. closestCenter compares distances between rectangles, which can
+  // switch much earlier than 50% when the active row itself is a candidate.
   const collisionDetection = useCallback<CollisionDetection>(
     (args) => {
       const activeDragId = String(args.active.id);
       if (activeDragId.startsWith('cat-')) {
-        return closestCenter({
-          ...args,
-          droppableContainers: args.droppableContainers.filter((c) =>
-            String(c.id).startsWith('cat-'),
-          ),
-        });
+        const categoryContainers = args.droppableContainers.filter((container) =>
+          categorySortableIds.includes(String(container.id)),
+        );
+        if (!args.pointerCoordinates) {
+          return closestCenter({ ...args, droppableContainers: categoryContainers });
+        }
+
+        const order = categorySortableIds;
+        const activeIndex = order.indexOf(activeDragId);
+        if (activeIndex < 0) return [];
+
+        const remaining = order.filter((id) => id !== activeDragId);
+        const insertionIndex = remaining.reduce((index, id) => {
+          const columnId = id.slice(4);
+          const rect =
+            args.droppableRects.get(`${CATEGORY_TARGET_PREFIX}${columnId}`) ??
+            args.droppableRects.get(id);
+          return rect && args.pointerCoordinates!.y > rect.top + rect.height / 2
+            ? index + 1
+            : index;
+        }, 0);
+        const newIndex = Math.min(insertionIndex, order.length - 1);
+        return [{ id: newIndex === activeIndex ? activeDragId : order[newIndex]! }];
       }
-      // Keep the active item among the candidates so it "owns" its slot until the
-      // drag passes a neighbour's midpoint (closestCenter), rather than swapping
-      // the instant the pointer edges into the next item.
+
       const containers = args.droppableContainers.filter((c) => !String(c.id).startsWith('cat-'));
       // Find the bucket under the pointer, ignoring the dragged item itself: its
       // rect follows the cursor and would otherwise always capture the pointer.
@@ -243,10 +261,29 @@ export function ListPage() {
       const itemContainers = containers.filter((c) =>
         bucketItems.some((item) => item.id === String(c.id)),
       );
-      const closest = closestCenter({ ...args, droppableContainers: itemContainers });
-      return closest.length > 0 ? closest : [{ id: bucketId }];
+      if (!args.pointerCoordinates) {
+        const closest = closestCenter({ ...args, droppableContainers: itemContainers });
+        return closest.length > 0 ? closest : [{ id: bucketId }];
+      }
+
+      const order = bucketItems.map((item) => item.id);
+      const activeIndex = order.indexOf(activeDragId);
+      const remaining = order.filter((id) => id !== activeDragId);
+      const insertionIndex = remaining.reduce((index, id) => {
+        const rect = args.droppableRects.get(id);
+        return rect && args.pointerCoordinates!.y > rect.top + rect.height / 2 ? index + 1 : index;
+      }, 0);
+
+      // The item has just entered another bucket: onDragOver inserts before the
+      // returned item (or appends when the pointer is below every midpoint).
+      if (activeIndex < 0) {
+        return [{ id: remaining[insertionIndex] ?? bucketId }];
+      }
+
+      const newIndex = Math.min(insertionIndex, order.length - 1);
+      return [{ id: newIndex === activeIndex ? activeDragId : order[newIndex]! }];
     },
-    [board],
+    [board, categorySortableIds],
   );
 
   if (detail.isLoading) {
@@ -267,9 +304,16 @@ export function ListPage() {
   const data = detail.data;
   const isOwner = data.list.role === 'owner';
 
-  function onAddItem(event: FormEvent): void {
+  async function onAddItem(event: FormEvent): Promise<void> {
     event.preventDefault();
-    if (title.trim().length > 0) addItem.mutate();
+    const nextTitle = title.trim();
+    if (nextTitle.length === 0) return;
+    try {
+      await addItem.mutateAsync({ title: nextTitle, categoryId: null });
+      setTitle('');
+    } catch {
+      // The mutation exposes its error state; keep the draft so the user can retry.
+    }
   }
   function onRenameSubmit(event: FormEvent): void {
     event.preventDefault();
@@ -298,6 +342,7 @@ export function ListPage() {
     draggingRef.current = true;
     const id = String(event.active.id);
     setActiveType(id.startsWith('cat-') ? 'category' : 'item');
+    setActiveId(id);
     if (id.startsWith('cat-')) {
       dragOriginRef.current = null;
     } else {
@@ -311,6 +356,7 @@ export function ListPage() {
   function onDragCancel(): void {
     draggingRef.current = false;
     setActiveType(null);
+    setActiveId(null);
     resync();
   }
 
@@ -385,6 +431,7 @@ export function ListPage() {
   function onDragEnd(event: DragEndEvent): void {
     draggingRef.current = false;
     setActiveType(null);
+    setActiveId(null);
     const { active, over } = event;
     if (!over) {
       resync();
@@ -436,6 +483,16 @@ export function ListPage() {
 
   const realCategories = columns.filter((column) => column.categoryId);
   const uncategorizedColumn = columns.find((column) => column.categoryId === null);
+  const activeItem =
+    activeType === 'item' && activeId
+      ? (Object.values(board)
+          .flat()
+          .find((item) => item.id === activeId) ?? null)
+      : null;
+  const activeColumn =
+    activeType === 'category' && activeId
+      ? (columns.find((column) => `cat-${column.id}` === activeId) ?? null)
+      : null;
 
   function renderPanel(column: Column) {
     return (
@@ -449,6 +506,10 @@ export function ListPage() {
         members={data.members}
         items={board[column.id] ?? []}
         itemDragActive={activeType === 'item'}
+        addItemPending={addItem.isPending}
+        onAddItem={async (itemTitle) => {
+          await addItem.mutateAsync({ title: itemTitle, categoryId: column.categoryId });
+        }}
         color={column.color}
         onRecolor={
           column.categoryId
@@ -568,14 +629,66 @@ export function ListPage() {
           onDragCancel={onDragCancel}
         >
           <div className="board">
-            <SortableContext
-              items={realCategories.map((column) => `cat-${column.id}`)}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={categorySortableIds} strategy={verticalListSortingStrategy}>
               {realCategories.map(renderPanel)}
             </SortableContext>
             {uncategorizedColumn && renderPanel(uncategorizedColumn)}
           </div>
+          <DragOverlay>
+            {activeItem ? (
+              <div className="item drag-overlay">
+                <div className="item__main">
+                  <span className="drag-handle" aria-hidden="true">
+                    <GripIcon />
+                  </span>
+                  <span className="item__title">{activeItem.title}</span>
+                </div>
+              </div>
+            ) : activeColumn ? (
+              <div
+                className="panel drag-overlay"
+                style={
+                  activeColumn.color
+                    ? { borderLeftColor: activeColumn.color, borderLeftWidth: '4px' }
+                    : undefined
+                }
+              >
+                <div
+                  className="panel__header"
+                  style={
+                    activeColumn.color
+                      ? {
+                          background: `color-mix(in srgb, ${activeColumn.color} 14%, var(--surface-2))`,
+                        }
+                      : undefined
+                  }
+                >
+                  <span className="panel__title">
+                    <span className="drag-handle" aria-hidden="true">
+                      <GripIcon />
+                    </span>
+                    <span>{activeColumn.name}</span>
+                    <span className="panel__count">{(board[activeColumn.id] ?? []).length}</span>
+                  </span>
+                </div>
+                <div className="panel__body">
+                  {(board[activeColumn.id] ?? []).map((item) => (
+                    <div key={item.id} className="item">
+                      <div className="item__main">
+                        <span className="drag-handle" aria-hidden="true">
+                          <GripIcon />
+                        </span>
+                        <span className="item__title">{item.title}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {(board[activeColumn.id] ?? []).length === 0 && (
+                    <div className="panel__empty">Drop items here</div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
 
         <form className="add-category" onSubmit={onAddCategory}>

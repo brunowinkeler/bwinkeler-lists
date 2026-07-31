@@ -24,10 +24,15 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
   });
   const remove = useMutation({ mutationFn: () => deleteItem(item.id), onSuccess: invalidate });
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-    animateLayoutChanges: () => false,
-  });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   const [title, setTitle] = useState(item.title);
@@ -64,6 +69,7 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
           type="button"
           className="drag-handle"
           aria-label="Drag to reorder"
+          ref={setActivatorNodeRef}
           {...attributes}
           {...listeners}
         >

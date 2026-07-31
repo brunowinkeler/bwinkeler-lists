@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type FormEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ItemDto, ListKind, MemberDto } from '@bwinkeler-lists/shared';
 import { useDetailsOutsideClose } from '../../lib/useDetailsOutsideClose';
 import { ItemRow } from './ItemRow';
-import { GripIcon, TrashIcon } from '../../components/icons';
+import { GripIcon, PlusIcon, TrashIcon } from '../../components/icons';
 
 const CATEGORY_COLORS = [
   '#ef4444',
@@ -30,6 +30,8 @@ interface CategoryPanelProps {
   /** True while an item (not a category) is being dragged, so the drop
    * highlight does not flash while categories are being reordered. */
   itemDragActive: boolean;
+  addItemPending: boolean;
+  onAddItem: (title: string) => Promise<void>;
   color?: string | null;
   onRecolor?: (color: string | null) => void;
   onRename?: (name: string) => void;
@@ -45,22 +47,31 @@ export function CategoryPanel({
   members,
   items,
   itemDragActive,
+  addItemPending,
+  onAddItem,
   color,
   onRecolor,
   onRename,
   onDelete,
 }: CategoryPanelProps) {
   const isUncategorized = categoryId === null;
-  // The header is the sortable node used for category reordering; the body is a
-  // separate droppable that receives items. Keeping items OUT of the sortable
-  // node avoids nesting draggables (which stops item dragging from working).
+  // The full panel is the sortable/draggable node so sibling panels make room
+  // by its real height. A separate header target gives category collision
+  // detection a compact 50% threshold even when this panel contains many items.
   const sortable = useSortable({
     id: `cat-${columnId}`,
     data: { type: 'category', columnId },
     disabled: isUncategorized,
-    animateLayoutChanges: () => false,
+  });
+  const categoryTarget = useDroppable({
+    id: `cat-target-${columnId}`,
+    disabled: isUncategorized,
   });
   const drop = useDroppable({ id: columnId });
+  // Keep the SortableContext identity stable while drag-context state changes.
+  // Recreating this array makes dnd-kit briefly disable transitions, which made
+  // item displacement animate in one direction but snap in the other.
+  const itemIds = useMemo(() => items.map((item) => item.id), [items]);
   const colorRef = useRef<HTMLDetailsElement>(null);
   useDetailsOutsideClose(colorRef);
 
@@ -81,6 +92,8 @@ export function CategoryPanel({
 
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState(name);
+  const [addingItem, setAddingItem] = useState(false);
+  const [itemDraft, setItemDraft] = useState('');
   useEffect(() => {
     setDraftName(name);
   }, [name]);
@@ -95,18 +108,45 @@ export function CategoryPanel({
     }
   }
 
+  async function submitItem(event: FormEvent): Promise<void> {
+    event.preventDefault();
+    const next = itemDraft.trim();
+    if (next.length === 0) return;
+    try {
+      await onAddItem(next);
+      setItemDraft('');
+    } catch {
+      // Keep the draft visible so the user can retry after a request failure.
+    }
+  }
+
+  function cancelItem(): void {
+    setItemDraft('');
+    setAddingItem(false);
+  }
+
+  function handleItemFormBlur(event: FocusEvent<HTMLFormElement>): void {
+    // Keep the form open when focus moves to its Add/Cancel buttons; close it
+    // only when the user clicks or tabs completely outside the quick-add UI.
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      cancelItem();
+    }
+  }
+
   return (
     <section
+      ref={sortable.setNodeRef}
       style={style}
       className={`panel${isUncategorized ? ' panel--uncategorized' : ''}${sortable.isDragging ? ' is-dragging' : ''}`}
     >
-      <header ref={sortable.setNodeRef} className="panel__header" style={headerStyle}>
+      <header ref={categoryTarget.setNodeRef} className="panel__header" style={headerStyle}>
         <span className="panel__title">
           {!isUncategorized && (
             <button
               type="button"
               className="drag-handle"
               aria-label={`Reorder category “${name}”`}
+              ref={sortable.setActivatorNodeRef}
               {...sortable.attributes}
               {...sortable.listeners}
             >
@@ -191,15 +231,47 @@ export function CategoryPanel({
         ref={drop.setNodeRef}
         className={`panel__body${drop.isOver && itemDragActive ? ' is-over' : ''}`}
       >
-        <SortableContext
-          items={items.map((item) => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
             <ItemRow key={item.id} listId={listId} item={item} kind={kind} members={members} />
           ))}
         </SortableContext>
         {items.length === 0 && <div className="panel__empty">Drop items here</div>}
+        {addingItem ? (
+          <form className="panel__quick-add" onSubmit={submitItem} onBlur={handleItemFormBlur}>
+            <input
+              className="grow"
+              value={itemDraft}
+              autoFocus
+              aria-label={`New item for “${name}”`}
+              placeholder={`Add to ${name}…`}
+              onChange={(event) => setItemDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') cancelItem();
+              }}
+            />
+            <button
+              type="submit"
+              className="primary btn-sm"
+              disabled={addItemPending || itemDraft.trim().length === 0}
+            >
+              Add
+            </button>
+            <button type="button" className="ghost btn-sm" onClick={cancelItem}>
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            className="ghost btn-sm panel__quick-add-trigger"
+            aria-label={`Add item to “${name}”`}
+            onClick={() => setAddingItem(true)}
+          >
+            <PlusIcon />
+            <span>Add item</span>
+          </button>
+        )}
       </div>
     </section>
   );

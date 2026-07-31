@@ -125,19 +125,19 @@ assumed.
 
 ### 3.3 Items (LST-ITM)
 
-| ID          | Requirement                                                                                                                                                         | Trace | Verify |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------ |
-| LST-ITM-001 | The system shall allow an Owner or Editor to add an item to a list with a non-empty title.                                                                          | O1    | T      |
-| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                  | O1    | T      |
-| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                         | O1    | T      |
-| LST-ITM-004 | The system shall allow an Owner or Editor to delete an item.                                                                                                        | O1    | T      |
-| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                           | A4    | T      |
-| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                               | A4    | T      |
-| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                  | A4    | T      |
-| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                  | A4    | T      |
-| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                              | A4    | T      |
-| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes. | A1    | T      |
-| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                          | O4    | I      |
+| ID          | Requirement                                                                                                                                                         | Trace  | Verify |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| LST-ITM-001 | The system shall allow an Owner or Editor to add an item with a non-empty title directly to a selected category or to the Uncategorized group.                      | O1; O5 | T      |
+| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                  | O1     | T      |
+| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                         | O1     | T      |
+| LST-ITM-004 | The system shall allow an Owner or Editor to delete an item.                                                                                                        | O1     | T      |
+| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                           | A4     | T      |
+| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                               | A4     | T      |
+| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                  | A4     | T      |
+| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                  | A4     | T      |
+| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                              | A4     | T      |
+| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes. | A1     | T      |
+| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                          | O4     | I      |
 
 ### 3.4 Categories (LST-CAT)
 
