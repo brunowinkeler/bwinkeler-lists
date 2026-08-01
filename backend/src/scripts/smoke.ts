@@ -197,6 +197,59 @@ async function main(): Promise<void> {
 
   res = await app.inject({
     method: 'POST',
+    url: `/api/lists/${listId}/items`,
+    headers: auth(),
+    payload: { title: 'Completed category item', categoryId: firstCategoryId },
+  });
+  assert.equal(res.statusCode, 201, 'create category item for completed cleanup');
+  const completedCategoryItemId = (JSON.parse(res.body) as { item: { id: string } }).item.id;
+  res = await app.inject({
+    method: 'PATCH',
+    url: `/api/items/${completedCategoryItemId}`,
+    headers: auth(),
+    payload: { status: 'done' },
+  });
+  assert.equal(res.statusCode, 200, 'complete category item for cleanup');
+
+  res = await app.inject({
+    method: 'POST',
+    url: `/api/lists/${listId}/items/completed/delete`,
+    headers: auth(),
+    payload: { categoryId: firstCategoryId },
+  });
+  assert.equal(res.statusCode, 200, 'remove completed items from one category');
+  assert.equal(
+    (JSON.parse(res.body) as { deletedCount: number }).deletedCount,
+    1,
+    'category cleanup removes only its completed item',
+  );
+
+  res = await app.inject({
+    method: 'GET',
+    url: `/api/lists/${listId}`,
+    headers: { cookie: cookieHeader(jar) },
+  });
+  const afterCategoryCleanup = JSON.parse(res.body) as { items: { id: string }[] };
+  assert.ok(
+    afterCategoryCleanup.items.some((item) => item.id === itemId),
+    'category cleanup preserves completed items in other buckets',
+  );
+
+  res = await app.inject({
+    method: 'POST',
+    url: `/api/lists/${listId}/items/completed/delete`,
+    headers: auth(),
+    payload: {},
+  });
+  assert.equal(res.statusCode, 200, 'remove completed items from the whole list');
+  assert.equal(
+    (JSON.parse(res.body) as { deletedCount: number }).deletedCount,
+    1,
+    'list cleanup removes the remaining completed item',
+  );
+
+  res = await app.inject({
+    method: 'POST',
     url: `/api/lists/${listId}/invitations`,
     headers: auth(),
     payload: { email: 'member@example.test' },

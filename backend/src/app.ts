@@ -39,7 +39,10 @@ export async function buildApp(config: AppConfig, db: Database): Promise<Fastify
 
   await app.register(helmet);
   await app.register(cookie);
-  await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+  await app.register(rateLimit, {
+    max: config.RATE_LIMIT_MAX,
+    timeWindow: '1 minute',
+  });
   await app.register(websocket);
 
   // Resolve the session (only when a cookie is present) and make sure API

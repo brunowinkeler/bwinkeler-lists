@@ -16,6 +16,7 @@ const EnvSchema = z.object({
   CSRF_COOKIE_NAME: z.string().min(1).default('lists_csrf'),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(168),
   SESSION_SECRET: z.string().min(16),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
 });
 

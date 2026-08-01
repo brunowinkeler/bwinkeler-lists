@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type FocusEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ItemDto, ListKind, MemberDto } from '@bwinkeler-lists/shared';
 import { useDetailsOutsideClose } from '../../lib/useDetailsOutsideClose';
 import { ItemRow } from './ItemRow';
-import { GripIcon, PlusIcon, TrashIcon } from '../../components/icons';
+import { ChevronDownIcon, GripIcon, PlusIcon, TrashIcon } from '../../components/icons';
 
 const CATEGORY_COLORS = [
   '#ef4444',
@@ -32,6 +32,10 @@ interface CategoryPanelProps {
   itemDragActive: boolean;
   addItemPending: boolean;
   onAddItem: (title: string) => Promise<void>;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  removeCompletedPending: boolean;
+  onRemoveCompleted?: () => void;
   color?: string | null;
   onRecolor?: (color: string | null) => void;
   onRename?: (name: string) => void;
@@ -49,6 +53,10 @@ export function CategoryPanel({
   itemDragActive,
   addItemPending,
   onAddItem,
+  collapsed,
+  onToggleCollapse,
+  removeCompletedPending,
+  onRemoveCompleted,
   color,
   onRecolor,
   onRename,
@@ -67,7 +75,7 @@ export function CategoryPanel({
     id: `cat-target-${columnId}`,
     disabled: isUncategorized,
   });
-  const drop = useDroppable({ id: columnId });
+  const drop = useDroppable({ id: columnId, disabled: collapsed });
   // Keep the SortableContext identity stable while drag-context state changes.
   // Recreating this array makes dnd-kit briefly disable transitions, which made
   // item displacement animate in one direction but snap in the other.
@@ -94,9 +102,29 @@ export function CategoryPanel({
   const [draftName, setDraftName] = useState(name);
   const [addingItem, setAddingItem] = useState(false);
   const [itemDraft, setItemDraft] = useState('');
+  const quickAddRef = useRef<HTMLFormElement>(null);
+  const completedCount = items.filter((item) => item.status === 'done').length;
   useEffect(() => {
     setDraftName(name);
   }, [name]);
+
+  useEffect(() => {
+    if (!addingItem) return;
+
+    // iOS Safari may report relatedTarget=null when a touch moves focus from
+    // the input to the submit button. Pointer containment is reliable and lets
+    // the button submit before an outside interaction closes the form.
+    function handleOutsidePointer(event: PointerEvent): void {
+      const target = event.target;
+      if (target instanceof Node && !quickAddRef.current?.contains(target)) {
+        setItemDraft('');
+        setAddingItem(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointer, true);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointer, true);
+  }, [addingItem]);
 
   function commitRename(): void {
     setEditing(false);
@@ -125,19 +153,11 @@ export function CategoryPanel({
     setAddingItem(false);
   }
 
-  function handleItemFormBlur(event: FocusEvent<HTMLFormElement>): void {
-    // Keep the form open when focus moves to its Add/Cancel buttons; close it
-    // only when the user clicks or tabs completely outside the quick-add UI.
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      cancelItem();
-    }
-  }
-
   return (
     <section
       ref={sortable.setNodeRef}
       style={style}
-      className={`panel${isUncategorized ? ' panel--uncategorized' : ''}${sortable.isDragging ? ' is-dragging' : ''}`}
+      className={`panel${isUncategorized ? ' panel--uncategorized' : ''}${collapsed ? ' is-collapsed' : ''}${sortable.isDragging ? ' is-dragging' : ''}`}
     >
       <header ref={categoryTarget.setNodeRef} className="panel__header" style={headerStyle}>
         <span className="panel__title">
@@ -178,101 +198,126 @@ export function CategoryPanel({
           )}
           <span className="panel__count">{items.length}</span>
         </span>
-        {!isUncategorized && (onRecolor || onDelete) && (
-          <div className="panel__actions">
-            {onRecolor && (
-              <details ref={colorRef} className="popover color-picker">
-                <summary
-                  className="icon-btn"
-                  aria-label={`Change color of category “${name}”`}
-                  title="Category color"
-                >
-                  <span
-                    className="color-dot"
-                    style={color ? { background: color, borderColor: 'transparent' } : undefined}
-                  />
-                </summary>
-                <div className="popover__panel color-picker__panel">
-                  {CATEGORY_COLORS.map((swatch) => (
-                    <button
-                      key={swatch}
-                      type="button"
-                      className="color-swatch"
-                      style={{ background: swatch }}
-                      aria-label={`Set color ${swatch}`}
-                      aria-pressed={color === swatch}
-                      onClick={() => pickColor(swatch)}
-                    />
-                  ))}
+        <div className="panel__actions">
+          {!isUncategorized && onRecolor && (
+            <details ref={colorRef} className="popover color-picker">
+              <summary
+                className="icon-btn"
+                aria-label={`Change color of category “${name}”`}
+                title="Category color"
+              >
+                <span
+                  className="color-dot"
+                  style={color ? { background: color, borderColor: 'transparent' } : undefined}
+                />
+              </summary>
+              <div className="popover__panel color-picker__panel">
+                {CATEGORY_COLORS.map((swatch) => (
                   <button
+                    key={swatch}
                     type="button"
-                    className="color-swatch color-swatch--none"
-                    aria-label="Clear color"
-                    aria-pressed={!color}
-                    onClick={() => pickColor(null)}
+                    className="color-swatch"
+                    style={{ background: swatch }}
+                    aria-label={`Set color ${swatch}`}
+                    aria-pressed={color === swatch}
+                    onClick={() => pickColor(swatch)}
                   />
-                </div>
-              </details>
-            )}
-            {onDelete && (
+                ))}
+                <button
+                  type="button"
+                  className="color-swatch color-swatch--none"
+                  aria-label="Clear color"
+                  aria-pressed={!color}
+                  onClick={() => pickColor(null)}
+                />
+              </div>
+            </details>
+          )}
+          {!isUncategorized && onDelete && (
+            <button
+              type="button"
+              className="icon-btn danger"
+              aria-label={`Delete category “${name}”`}
+              onClick={onDelete}
+            >
+              <TrashIcon />
+            </button>
+          )}
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={`${collapsed ? 'Expand' : 'Collapse'} category “${name}”`}
+            aria-expanded={!collapsed}
+            aria-controls={collapsed ? undefined : `category-body-${columnId}`}
+            onClick={onToggleCollapse}
+          >
+            <ChevronDownIcon className={`collapse-chevron${collapsed ? ' is-collapsed' : ''}`} />
+          </button>
+        </div>
+      </header>
+      {!collapsed && (
+        <div
+          id={`category-body-${columnId}`}
+          ref={drop.setNodeRef}
+          className={`panel__body${drop.isOver && itemDragActive ? ' is-over' : ''}`}
+        >
+          <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+            {items.map((item) => (
+              <ItemRow key={item.id} listId={listId} item={item} kind={kind} members={members} />
+            ))}
+          </SortableContext>
+          {items.length === 0 && <div className="panel__empty">Drop items here</div>}
+          <div className="panel__footer">
+            {addingItem ? (
+              <form ref={quickAddRef} className="panel__quick-add grow" onSubmit={submitItem}>
+                <input
+                  className="grow"
+                  value={itemDraft}
+                  autoFocus
+                  aria-label={`New item for “${name}”`}
+                  placeholder={`Add to ${name}…`}
+                  onChange={(event) => setItemDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') cancelItem();
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="primary btn-sm"
+                  disabled={addItemPending || itemDraft.trim().length === 0}
+                >
+                  Add
+                </button>
+                <button type="button" className="ghost btn-sm" onClick={cancelItem}>
+                  Cancel
+                </button>
+              </form>
+            ) : (
               <button
                 type="button"
-                className="icon-btn danger"
-                aria-label={`Delete category “${name}”`}
-                onClick={onDelete}
+                className="ghost btn-sm panel__quick-add-trigger"
+                aria-label={`Add item to “${name}”`}
+                onClick={() => setAddingItem(true)}
+              >
+                <PlusIcon />
+                <span>Add item</span>
+              </button>
+            )}
+            {completedCount > 0 && onRemoveCompleted && (
+              <button
+                type="button"
+                className="danger btn-sm panel__remove-completed"
+                disabled={removeCompletedPending}
+                onClick={onRemoveCompleted}
+                aria-label={`Remove completed items from “${name}”`}
               >
                 <TrashIcon />
+                <span>Remove completed ({completedCount})</span>
               </button>
             )}
           </div>
-        )}
-      </header>
-      <div
-        ref={drop.setNodeRef}
-        className={`panel__body${drop.isOver && itemDragActive ? ' is-over' : ''}`}
-      >
-        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-          {items.map((item) => (
-            <ItemRow key={item.id} listId={listId} item={item} kind={kind} members={members} />
-          ))}
-        </SortableContext>
-        {items.length === 0 && <div className="panel__empty">Drop items here</div>}
-        {addingItem ? (
-          <form className="panel__quick-add" onSubmit={submitItem} onBlur={handleItemFormBlur}>
-            <input
-              className="grow"
-              value={itemDraft}
-              autoFocus
-              aria-label={`New item for “${name}”`}
-              placeholder={`Add to ${name}…`}
-              onChange={(event) => setItemDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') cancelItem();
-              }}
-            />
-            <button
-              type="submit"
-              className="primary btn-sm"
-              disabled={addItemPending || itemDraft.trim().length === 0}
-            >
-              Add
-            </button>
-            <button type="button" className="ghost btn-sm" onClick={cancelItem}>
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <button
-            type="button"
-            className="ghost btn-sm panel__quick-add-trigger"
-            aria-label={`Add item to “${name}”`}
-            onClick={() => setAddingItem(true)}
-          >
-            <PlusIcon />
-            <span>Add item</span>
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

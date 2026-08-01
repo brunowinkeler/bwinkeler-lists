@@ -38,6 +38,31 @@ async function dragOnto(page: Page, source: Locator, target: Locator): Promise<v
   await page.mouse.up();
 }
 
+async function dragPastItem(page: Page, source: Locator, target: Locator): Promise<void> {
+  await source.scrollIntoViewIfNeeded();
+  const from = await source.boundingBox();
+  if (!from) throw new Error('source bounding box missing');
+  const startX = from.x + from.width / 2;
+  const startY = from.y + from.height / 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX, startY + 8, { steps: 3 });
+  await page.waitForTimeout(80);
+
+  const to = await target.boundingBox();
+  if (!to) throw new Error('target bounding box missing');
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height - 2, { steps: 15 });
+  await page.waitForTimeout(150);
+  const settled = await target.boundingBox();
+  if (settled) {
+    await page.mouse.move(settled.x + settled.width / 2, settled.y + settled.height - 2, {
+      steps: 5,
+    });
+  }
+  await page.mouse.up();
+}
+
 async function dragUpWithScroll(
   page: Page,
   source: Locator,
@@ -92,6 +117,66 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     .toBe(true);
 }
 
+function categoryPanel(page: Page, name: string): Locator {
+  if (name === 'Uncategorized') return page.locator('.panel--uncategorized');
+  return page.locator('.panel', {
+    has: page.getByRole('button', { name, exact: true }),
+  });
+}
+
+async function itemRowByTitle(panel: Locator, title: string): Promise<Locator> {
+  const rows = panel.locator('.item');
+  const findIndex = (): Promise<number> =>
+    rows.evaluateAll(
+      (elements, expectedTitle) =>
+        elements.findIndex(
+          (element) =>
+            (element.querySelector<HTMLInputElement>('input[aria-label="Item title"]')?.value ??
+              '') === expectedTitle,
+        ),
+      title,
+    );
+
+  await expect.poll(findIndex).toBeGreaterThanOrEqual(0);
+  return rows.nth(await findIndex());
+}
+
+async function expectItemTitle(
+  scope: Page | Locator,
+  title: string,
+  present = true,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      scope
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll(
+          (inputs, expectedTitle) =>
+            inputs.some((input) => (input as HTMLInputElement).value === expectedTitle),
+          title,
+        ),
+    )
+    .toBe(present);
+}
+
+async function addItemToCategory(
+  page: Page,
+  title: string,
+  categoryName = 'Uncategorized',
+  submitWith: 'button' | 'enter' = 'button',
+): Promise<void> {
+  const panel = categoryPanel(page, categoryName);
+  const input = panel.getByLabel(`New item for “${categoryName}”`);
+  const previousCount = await panel.getByLabel('Item title', { exact: true }).count();
+  if ((await input.count()) === 0) {
+    await panel.getByRole('button', { name: `Add item to “${categoryName}”` }).click();
+  }
+  await input.fill(title);
+  if (submitWith === 'enter') await input.press('Enter');
+  else await panel.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(panel.getByLabel('Item title', { exact: true })).toHaveCount(previousCount + 1);
+}
+
 test('create a list, add and complete an item, and persist across reload', async ({ page }) => {
   await login(page);
   await expect(page.getByLabel('Kind')).toHaveValue('simple');
@@ -101,8 +186,7 @@ test('create a list, add and complete an item, and persist across reload', async
   // Creating a list navigates straight to the new list's page.
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
 
-  await page.getByLabel('New item title').fill('First item');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'First item');
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('First item');
 
   await page.getByRole('checkbox').first().click();
@@ -150,8 +234,7 @@ test('realtime: a second browser context sees a newly added item', async ({ brow
   await pageB.goto(listUrl);
   await expect(pageB.getByRole('heading', { name: listName })).toBeVisible();
 
-  await pageA.getByLabel('New item title').fill('Realtime item');
-  await pageA.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(pageA, 'Realtime item');
 
   await expect(pageB.getByLabel('Item title', { exact: true }).first()).toHaveValue(
     'Realtime item',
@@ -171,6 +254,43 @@ test('create a category and see it as a panel', async ({ page }) => {
   await page.getByLabel('New category name').fill('Produce');
   await page.getByRole('button', { name: 'Add category' }).click();
   await expect(page.getByRole('button', { name: 'Produce', exact: true })).toBeVisible();
+});
+
+test('category controls live above the board and collapse individually or all at once', async ({
+  page,
+}) => {
+  await login(page);
+  const listName = `Collapse ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await expect(page.getByLabel('New item title')).toHaveCount(0);
+  const categoryInputBox = await page.getByLabel('New category name').boundingBox();
+  const boardBox = await page.locator('.board').boundingBox();
+  expect(categoryInputBox).not.toBeNull();
+  expect(boardBox).not.toBeNull();
+  expect(categoryInputBox!.y).toBeLessThan(boardBox!.y);
+
+  await page.getByLabel('New category name').fill('Fruit');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  const fruitPanel = categoryPanel(page, 'Fruit');
+  await expect(fruitPanel).toBeVisible();
+
+  await fruitPanel.getByRole('button', { name: 'Collapse category “Fruit”' }).click();
+  await expect(fruitPanel.locator('.panel__body')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Collapse all categories' })).toBeVisible();
+
+  // A realtime/query refresh caused by another category must not expand Fruit.
+  await page.getByLabel('New category name').fill('Vegetables');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await expect(page.getByRole('button', { name: 'Vegetables', exact: true })).toBeVisible();
+  await expect(fruitPanel.locator('.panel__body')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Collapse all categories' }).click();
+  await expect(page.locator('.panel__body')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Expand all categories' }).click();
+  await expect(page.locator('.panel__body')).toHaveCount(3);
 });
 
 test('quick-add creates an item directly in a category', async ({ page }) => {
@@ -205,6 +325,72 @@ test('quick-add creates an item directly in a category', async ({ page }) => {
   await expect(fruitPanel.getByLabel('Item title', { exact: true })).toHaveValue('Banana');
 });
 
+test('completed items move to the bottom and are removed only after confirmation', async ({
+  page,
+}) => {
+  await login(page);
+  const listName = `Completed ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  await page.getByLabel('New category name').fill('Fruit');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  const fruitPanel = categoryPanel(page, 'Fruit');
+  await addItemToCategory(page, 'Done first', 'Fruit');
+  const doneFirst = await itemRowByTitle(fruitPanel, 'Done first');
+  await doneFirst.getByRole('checkbox').click();
+  await expect(doneFirst.getByRole('checkbox')).toBeChecked();
+  await addItemToCategory(page, 'Still open', 'Fruit');
+  await expect
+    .poll(() =>
+      fruitPanel
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+    )
+    .toEqual(['Still open', 'Done first']);
+  await expect(page.getByRole('button', { name: 'Delete “Done first”' })).toHaveCount(0);
+
+  const categoryRemove = fruitPanel.getByRole('button', {
+    name: 'Remove completed items from “Fruit”',
+  });
+  let categoryConfirmation = '';
+  page.once('dialog', async (dialog) => {
+    categoryConfirmation = dialog.message();
+    await dialog.dismiss();
+  });
+  await categoryRemove.click();
+  expect(categoryConfirmation).toContain('from “Fruit”');
+  await expectItemTitle(fruitPanel, 'Done first');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await categoryRemove.click();
+  await expectItemTitle(fruitPanel, 'Done first', false);
+  await expectItemTitle(fruitPanel, 'Still open');
+
+  await addItemToCategory(page, 'Global Fruit', 'Fruit');
+  const globalFruit = await itemRowByTitle(fruitPanel, 'Global Fruit');
+  await globalFruit.getByRole('checkbox').click();
+  await expect(globalFruit.getByRole('checkbox')).toBeChecked();
+  await addItemToCategory(page, 'Global Uncategorized');
+  const uncategorizedPanel = categoryPanel(page, 'Uncategorized');
+  const globalUncategorized = await itemRowByTitle(uncategorizedPanel, 'Global Uncategorized');
+  await globalUncategorized.getByRole('checkbox').click();
+  await expect(globalUncategorized.getByRole('checkbox')).toBeChecked();
+
+  const globalRemove = page.getByRole('button', { name: 'Remove all completed (2)' });
+  let globalConfirmation = '';
+  page.once('dialog', async (dialog) => {
+    globalConfirmation = dialog.message();
+    await dialog.accept();
+  });
+  await globalRemove.click();
+  expect(globalConfirmation).toContain('from this list');
+  await expectItemTitle(page, 'Global Fruit', false);
+  await expectItemTitle(page, 'Global Uncategorized', false);
+  await expectItemTitle(fruitPanel, 'Still open');
+});
+
 test('duplicate a list copies its items', async ({ page }) => {
   await login(page);
   const listName = `Dup ${Date.now()}`;
@@ -212,8 +398,7 @@ test('duplicate a list copies its items', async ({ page }) => {
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
 
-  await page.getByLabel('New item title').fill('Copy me');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'Copy me');
   await expect(page.getByLabel('Item title', { exact: true }).first()).toHaveValue('Copy me');
 
   await page.getByRole('button', { name: 'Duplicate' }).click();
@@ -301,15 +486,11 @@ test('reorder items within a bucket', async ({ page }) => {
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
 
-  await page.getByLabel('New item title').fill('First');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'First');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeEnabled();
-  await page.getByLabel('New item title').fill('Second');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'Second');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
-  await page.getByLabel('New item title').fill('Third');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'Third');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(3);
 
   const handles = page.getByRole('button', { name: 'Drag to reorder' });
@@ -334,6 +515,49 @@ test('reorder items within a bucket', async ({ page }) => {
     .toEqual(['Third', 'First', 'Second']);
 });
 
+test('reorder open items at the completed-item boundary', async ({ page }) => {
+  await login(page);
+  const listName = `StatusOrder ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  const panel = categoryPanel(page, 'Uncategorized');
+  await addItemToCategory(page, 'Completed first');
+  await addItemToCategory(page, 'Open first');
+  await addItemToCategory(page, 'Open second');
+  const completed = await itemRowByTitle(panel, 'Completed first');
+  await completed.getByRole('checkbox').click();
+  await expect
+    .poll(() =>
+      panel
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+    )
+    .toEqual(['Open first', 'Open second', 'Completed first']);
+
+  const source = (await itemRowByTitle(panel, 'Open first')).getByRole('button', {
+    name: 'Drag to reorder',
+  });
+  const target = await itemRowByTitle(panel, 'Completed first');
+  const responsePromise = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && response.url().endsWith('/position'),
+  );
+  await dragPastItem(page, source, target);
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+  expect(response.request().postDataJSON()).toMatchObject({ nextId: null });
+
+  await page.reload();
+  await expect
+    .poll(() =>
+      panel
+        .getByLabel('Item title', { exact: true })
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+    )
+    .toEqual(['Open second', 'Open first', 'Completed first']);
+});
+
 test('a small drag keeps items in place (midpoint threshold)', async ({ page }) => {
   await login(page);
   const listName = `Tiny ${Date.now()}`;
@@ -341,11 +565,9 @@ test('a small drag keeps items in place (midpoint threshold)', async ({ page }) 
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
 
-  await page.getByLabel('New item title').fill('First');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'First');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(1);
-  await page.getByLabel('New item title').fill('Second');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'Second');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveCount(2);
 
   const handles = page.getByRole('button', { name: 'Drag to reorder' });
@@ -378,8 +600,7 @@ test('move an item into a category', async ({ page }) => {
   await page.getByRole('button', { name: 'Add category' }).click();
   await expect(page.getByRole('button', { name: 'Fruit', exact: true })).toBeVisible();
 
-  await page.getByLabel('New item title').fill('Banana');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await addItemToCategory(page, 'Banana');
   await expect(page.getByLabel('Item title', { exact: true })).toHaveValue('Banana');
 
   const handle = page.getByRole('button', { name: 'Drag to reorder' }).first();
@@ -479,6 +700,14 @@ test('mobile layout stays inside an iPhone 13 viewport', async ({ page }) => {
   await expect(page.getByRole('heading', { name: listName })).toBeVisible();
   await page.getByLabel('New category name').fill('Mobile category');
   await page.getByRole('button', { name: 'Add category' }).click();
+  const mobilePanel = categoryPanel(page, 'Mobile category');
+  await mobilePanel.getByRole('button', { name: 'Add item to “Mobile category”' }).click();
+  await mobilePanel.getByLabel('New item for “Mobile category”').fill('Added by touch button');
+  await mobilePanel.getByRole('button', { name: 'Add', exact: true }).click();
+  await expectItemTitle(mobilePanel, 'Added by touch button');
+  const compactItemBox = await mobilePanel.locator('.item').boundingBox();
+  expect(compactItemBox).not.toBeNull();
+  expect(compactItemBox!.height).toBeLessThan(60);
   await page.getByLabel('Change color of category “Mobile category”').click();
 
   const colorPicker = page.locator('.color-picker__panel:visible');

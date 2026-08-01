@@ -126,32 +126,39 @@ assumed.
 
 ### 3.3 Items (LST-ITM)
 
-| ID          | Requirement                                                                                                                                                         | Trace  | Verify |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
-| LST-ITM-001 | The system shall allow an Owner or Editor to add an item with a non-empty title directly to a selected category or to the Uncategorized group.                      | O1; O5 | T      |
-| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                  | O1     | T      |
-| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                         | O1     | T      |
-| LST-ITM-004 | The system shall allow an Owner or Editor to delete an item.                                                                                                        | O1     | T      |
-| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                           | A4     | T      |
-| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                               | A4     | T      |
-| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                  | A4     | T      |
-| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                  | A4     | T      |
-| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                              | A4     | T      |
-| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes. | A1     | T      |
-| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                          | O4     | I      |
+| ID          | Requirement                                                                                                                                                                | Trace  | Verify |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| LST-ITM-001 | The system shall allow an Owner or Editor to add an item with a non-empty title directly from a selected category panel or the Uncategorized panel.                        | O1; O5 | T      |
+| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                         | O1     | T      |
+| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                                | O1     | T      |
+| LST-ITM-004 | The list UI shall not offer individual item deletion; it shall allow an Owner or Editor to remove completed items in bulk for one category or the whole list.              | O1; O5 | T      |
+| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                                  | A4     | T      |
+| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                                      | A4     | T      |
+| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                         | A4     | T      |
+| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                         | A4     | T      |
+| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                                     | A4     | T      |
+| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes.        | A1     | T      |
+| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                                 | O4     | I      |
+| LST-ITM-012 | The category-local controls, including the Uncategorized panel control, shall be the standard item-creation path; the list header shall not contain an item-creation form. | O5     | T      |
+| LST-ITM-013 | Before removing completed items for a category or the whole list, the system shall require explicit user confirmation.                                                     | O5     | T      |
+| LST-ITM-014 | Within every category, the system shall present open items before completed items while preserving each partition's relative manual order.                                 | O5; A4 | T      |
+| LST-ITM-015 | Item cards shall use a compact layout approximately 25 percent shorter than the preceding standard card layout while retaining usable controls.                            | O5     | I      |
 
 ### 3.4 Categories (LST-CAT)
 
-| ID          | Requirement                                                                                                                                           | Trace   | Verify |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
-| LST-CAT-001 | The system shall allow an Owner or Editor to create a category with a non-empty name within a list.                                                   | O5; A15 | T      |
-| LST-CAT-002 | The system shall allow an Owner or Editor to rename a category.                                                                                       | O5; A15 | T      |
-| LST-CAT-003 | When a category is deleted, the system shall move its items to the Uncategorized group rather than deleting them.                                     | O5; A15 | T      |
-| LST-CAT-004 | The system shall allow an Owner or Editor to set the manual order of categories and shall persist that order.                                         | O5; A15 | T      |
-| LST-CAT-005 | The system shall allow an Owner or Editor to set or clear a category's color from a defined palette.                                                  | O5; A15 | T      |
-| LST-CAT-006 | The system shall allow an Owner or Editor to place an item in at most one category or leave it uncategorized, and to move an item between categories. | O5; A15 | T      |
-| LST-CAT-007 | The system shall display the Uncategorized group after all categories and shall preserve a manual item order within each group.                       | O5; A15 | T      |
-| LST-CAT-008 | The system shall scope categories to a single list and make them accessible only to that list's members.                                              | O4; A15 | T      |
+| ID          | Requirement                                                                                                                                                  | Trace   | Verify |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------ |
+| LST-CAT-001 | The system shall allow an Owner or Editor to create a category with a non-empty name within a list.                                                          | O5; A15 | T      |
+| LST-CAT-002 | The system shall allow an Owner or Editor to rename a category.                                                                                              | O5; A15 | T      |
+| LST-CAT-003 | When a category is deleted, the system shall move its items to the Uncategorized group rather than deleting them.                                            | O5; A15 | T      |
+| LST-CAT-004 | The system shall allow an Owner or Editor to set the manual order of categories and shall persist that order.                                                | O5; A15 | T      |
+| LST-CAT-005 | The system shall allow an Owner or Editor to set or clear a category's color from a defined palette.                                                         | O5; A15 | T      |
+| LST-CAT-006 | The system shall allow an Owner or Editor to place an item in at most one category or leave it uncategorized, and to move an item between categories.        | O5; A15 | T      |
+| LST-CAT-007 | The system shall display the Uncategorized group after all categories and shall preserve a manual item order within each group.                              | O5; A15 | T      |
+| LST-CAT-008 | The system shall scope categories to a single list and make them accessible only to that list's members.                                                     | O4; A15 | T      |
+| LST-CAT-009 | The system shall provide a control in every category header, including Uncategorized, that alternately collapses and expands that category's body.           | O5; A15 | T      |
+| LST-CAT-010 | The system shall provide a top-level control that collapses all category bodies when any is expanded and expands all category bodies when all are collapsed. | O5; A15 | T      |
+| LST-CAT-011 | The category-creation form shall appear above the category board on the list page.                                                                           | O5; A15 | T      |
 
 ### 3.5 Sharing and authorization (LST-SHR)
 

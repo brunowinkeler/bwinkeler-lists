@@ -2,6 +2,7 @@ import type {
   CategoryDto,
   CreateItemInput,
   CreateListInput,
+  DeleteCompletedItemsInput,
   DuplicateListInput,
   ItemDto,
   ListDetailDto,
@@ -50,8 +51,11 @@ export function reorderItem(id: string, input: ReorderItemInput): Promise<{ item
   return apiSend('PATCH', `/items/${id}/position`, input);
 }
 
-export function deleteItem(id: string): Promise<void> {
-  return apiSend('DELETE', `/items/${id}`);
+export function deleteCompletedItems(
+  listId: string,
+  input: DeleteCompletedItemsInput,
+): Promise<{ deletedCount: number }> {
+  return apiSend('POST', `/lists/${listId}/items/completed/delete`, input);
 }
 
 export function createCategory(listId: string, name: string): Promise<{ category: CategoryDto }> {

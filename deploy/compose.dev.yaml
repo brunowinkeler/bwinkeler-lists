@@ -67,6 +67,8 @@ services:
       PGUSER: ${PGUSER:-lists_dev}
       PGPASSWORD: ${PGPASSWORD:-change-me-in-dev}
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me}
+      # Browser suites compress many page sessions behind this one proxy IP.
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-1000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CHOKIDAR_USEPOLLING: 'true'
     ports:

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createItemInputSchema, loginInputSchema } from '../src/dto';
+import {
+  createItemInputSchema,
+  deleteCompletedItemsInputSchema,
+  loginInputSchema,
+} from '../src/dto';
 import { LIST_KINDS, MEMBER_ROLES } from '../src/enums';
 
 describe('shared DTOs', () => {
@@ -22,6 +26,16 @@ describe('shared DTOs', () => {
     const parsed = createItemInputSchema.parse({ title: 'Buy milk', dueDate: '2026-08-01' });
     expect(parsed.title).toBe('Buy milk');
     expect(parsed.dueDate).toBe('2026-08-01');
+  });
+
+  it('supports list, category, and Uncategorized completed-item scopes', () => {
+    expect(deleteCompletedItemsInputSchema.parse({})).toEqual({});
+    expect(deleteCompletedItemsInputSchema.parse({ categoryId: null })).toEqual({
+      categoryId: null,
+    });
+    expect(deleteCompletedItemsInputSchema.safeParse({ categoryId: 'not-a-uuid' }).success).toBe(
+      false,
+    );
   });
 });
 

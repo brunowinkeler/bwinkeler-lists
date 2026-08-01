@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import {
   createItemInputSchema,
+  deleteCompletedItemsInputSchema,
   reorderItemInputSchema,
   updateItemInputSchema,
 } from '@bwinkeler-lists/shared';
@@ -141,6 +142,39 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     }
     return reply.send({ item: toItemDto(item) });
   });
+
+  app.post<{ Params: { listId: string } }>(
+    '/lists/:listId/items/completed/delete',
+    async (request, reply) => {
+      const user = getSessionUser(request, reply);
+      if (!user) return;
+      const { listId } = request.params;
+      if (!(await getListRole(db, listId, user.id))) {
+        return reply.code(404).send({ error: 'List not found' });
+      }
+
+      const parsed = deleteCompletedItemsInputSchema.safeParse(request.body ?? {});
+      if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
+      const { categoryId } = parsed.data;
+      if (categoryId && !(await categoryBelongsToList(db, listId, categoryId))) {
+        return reply.code(400).send({ error: 'Category does not belong to the list' });
+      }
+
+      const filters = [eq(items.listId, listId), eq(items.status, 'done')];
+      if (categoryId === null) filters.push(isNull(items.categoryId));
+      if (categoryId) filters.push(eq(items.categoryId, categoryId));
+      const deleted = await db
+        .delete(items)
+        .where(and(...filters))
+        .returning({ id: items.id });
+
+      if (deleted.length > 0) {
+        await touchList(db, listId);
+        await app.hub.publishSnapshot(listId);
+      }
+      return reply.send({ deletedCount: deleted.length });
+    },
+  );
 
   app.patch<{ Params: { id: string } }>('/items/:id/position', async (request, reply) => {
     const user = getSessionUser(request, reply);

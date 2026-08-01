@@ -67,6 +67,12 @@ export const reorderItemInputSchema = z.object({
 });
 export type ReorderItemInput = z.infer<typeof reorderItemInputSchema>;
 
+/** Omit categoryId to target the whole list; null targets Uncategorized. */
+export const deleteCompletedItemsInputSchema = z.object({
+  categoryId: z.uuid().nullable().optional(),
+});
+export type DeleteCompletedItemsInput = z.infer<typeof deleteCompletedItemsInputSchema>;
+
 const categoryNameSchema = z.string().trim().min(1).max(120);
 
 export const createCategoryInputSchema = z.object({

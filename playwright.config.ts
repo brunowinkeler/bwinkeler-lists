@@ -11,6 +11,7 @@ const backendEnv: Record<string, string> = {
   PGUSER: process.env.PGUSER ?? 'lists_dev',
   PGPASSWORD: process.env.PGPASSWORD ?? 'change-me-in-dev',
   SESSION_SECRET: 'e2e-session-secret-please-change',
+  RATE_LIMIT_MAX: '1000',
   LOG_LEVEL: 'silent',
 };
 

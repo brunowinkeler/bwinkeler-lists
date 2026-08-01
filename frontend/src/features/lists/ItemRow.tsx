@@ -3,8 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ItemDto, ListKind, MemberDto } from '@bwinkeler-lists/shared';
-import { deleteItem, listKey, updateItem } from './api';
-import { GripIcon, TrashIcon } from '../../components/icons';
+import { listKey, updateItem } from './api';
+import { GripIcon } from '../../components/icons';
 
 interface ItemRowProps {
   listId: string;
@@ -22,7 +22,6 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
     mutationFn: (input: Parameters<typeof updateItem>[1]) => updateItem(item.id, input),
     onSuccess: invalidate,
   });
-  const remove = useMutation({ mutationFn: () => deleteItem(item.id), onSuccess: invalidate });
 
   const {
     attributes,
@@ -93,14 +92,6 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
             if (event.key === 'Enter') event.currentTarget.blur();
           }}
         />
-        <button
-          type="button"
-          className="icon-btn danger"
-          aria-label={`Delete “${item.title}”`}
-          onClick={() => remove.mutate()}
-        >
-          <TrashIcon />
-        </button>
       </div>
 
       {kind === 'task' && (

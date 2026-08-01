@@ -24,12 +24,18 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { DuplicateListInput, ItemDto, ListDetailDto } from '@bwinkeler-lists/shared';
+import type {
+  DeleteCompletedItemsInput,
+  DuplicateListInput,
+  ItemDto,
+  ListDetailDto,
+} from '@bwinkeler-lists/shared';
 import { realtime } from '../../lib/ws-client';
 import {
   createCategory,
   createItem,
   deleteCategory,
+  deleteCompletedItems,
   deleteList,
   duplicateList,
   fetchListDetail,
@@ -44,7 +50,7 @@ import {
 import { CategoryPanel } from './CategoryPanel';
 import { DuplicateDialog } from './DuplicateDialog';
 import { SharingPanel } from '../sharing/SharingPanel';
-import { CopyIcon, GripIcon, PlusIcon } from '../../components/icons';
+import { ChevronDownIcon, CopyIcon, GripIcon, PlusIcon, TrashIcon } from '../../components/icons';
 
 const UNCATEGORIZED = 'uncategorized';
 const CATEGORY_TARGET_PREFIX = 'cat-target-';
@@ -57,6 +63,28 @@ interface Column {
 }
 
 type Board = Record<string, ItemDto[]>;
+
+function openItemsFirst(items: ItemDto[]): ItemDto[] {
+  return [
+    ...items.filter((item) => item.status !== 'done'),
+    ...items.filter((item) => item.status === 'done'),
+  ];
+}
+
+function statusNeighbors(
+  items: ItemDto[],
+  activeId: string,
+): { previousId: string | null; nextId: string | null } | null {
+  const active = items.find((item) => item.id === activeId);
+  if (!active) return null;
+  const peers = items.filter((item) => item.status === active.status);
+  const index = peers.findIndex((item) => item.id === activeId);
+  if (index < 0) return null;
+  return {
+    previousId: peers[index - 1]?.id ?? null,
+    nextId: peers[index + 1]?.id ?? null,
+  };
+}
 
 function buildBoard(detail: ListDetailDto): { columns: Column[]; board: Board } {
   const columns: Column[] = [
@@ -76,6 +104,7 @@ function buildBoard(detail: ListDetailDto): { columns: Column[]; board: Board } 
     const key = item.categoryId && columnIds.has(item.categoryId) ? item.categoryId : UNCATEGORIZED;
     board[key]?.push(item);
   }
+  for (const column of columns) board[column.id] = openItemsFirst(board[column.id] ?? []);
   return { columns, board };
 }
 
@@ -111,6 +140,7 @@ export function ListPage() {
   // interaction feels instant; it re-syncs from the query whenever we are idle.
   const [columns, setColumns] = useState<Column[]>([]);
   const [board, setBoard] = useState<Board>({});
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(() => new Set());
   const [activeType, setActiveType] = useState<'item' | 'category' | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const draggingRef = useRef(false);
@@ -125,9 +155,16 @@ export function ListPage() {
     setBoard(built.board);
   }, [detail.data]);
 
-  const [title, setTitle] = useState('');
+  useEffect(() => {
+    setCollapsedColumns(new Set());
+  }, [listId]);
+
   const addItem = useMutation({
     mutationFn: (input: { title: string; categoryId: string | null }) => createItem(listId, input),
+    onSuccess: () => void invalidate(),
+  });
+  const removeCompleted = useMutation({
+    mutationFn: (input: DeleteCompletedItemsInput) => deleteCompletedItems(listId, input),
     onSuccess: () => void invalidate(),
   });
 
@@ -313,17 +350,6 @@ export function ListPage() {
   const data = detail.data;
   const isOwner = data.list.role === 'owner';
 
-  async function onAddItem(event: FormEvent): Promise<void> {
-    event.preventDefault();
-    const nextTitle = title.trim();
-    if (nextTitle.length === 0) return;
-    try {
-      await addItem.mutateAsync({ title: nextTitle, categoryId: null });
-      setTitle('');
-    } catch {
-      // The mutation exposes its error state; keep the draft so the user can retry.
-    }
-  }
   function onRenameSubmit(event: FormEvent): void {
     event.preventDefault();
     const next = nameDraft.trim();
@@ -337,6 +363,31 @@ export function ListPage() {
   function onAddCategory(event: FormEvent): void {
     event.preventDefault();
     if (newCategory.trim().length > 0) categoryCreate.mutate(newCategory.trim());
+  }
+
+  function toggleColumnCollapse(columnId: string): void {
+    setCollapsedColumns((current) => {
+      const next = new Set(current);
+      if (next.has(columnId)) next.delete(columnId);
+      else next.add(columnId);
+      return next;
+    });
+  }
+
+  function requestRemoveCompleted(
+    input: DeleteCompletedItemsInput,
+    count: number,
+    categoryName?: string,
+  ): void {
+    const location = categoryName ? ` from “${categoryName}”` : ' from this list';
+    const itemLabel = count === 1 ? 'item' : 'items';
+    if (
+      window.confirm(
+        `Remove ${count} completed ${itemLabel}${location}? This action cannot be undone.`,
+      )
+    ) {
+      removeCompleted.mutate(input);
+    }
   }
 
   function resync(): void {
@@ -431,8 +482,8 @@ export function ListPage() {
         overId in prev ? toItems.length : overIndex >= 0 ? overIndex : toItems.length;
       return {
         ...prev,
-        [from]: fromItems.filter((item) => item.id !== activeId),
-        [to]: [...toItems.slice(0, insertAt), moving, ...toItems.slice(insertAt)],
+        [from]: openItemsFirst(fromItems.filter((item) => item.id !== activeId)),
+        [to]: openItemsFirst([...toItems.slice(0, insertAt), moving, ...toItems.slice(insertAt)]),
       };
     });
   }
@@ -471,7 +522,7 @@ export function ListPage() {
           ? targetItems.length - 1
           : targetItems.findIndex((item) => item.id === overId);
       if (oldIndex >= 0 && newIndex >= 0 && oldIndex !== newIndex) {
-        targetItems = arrayMove(targetItems, oldIndex, newIndex);
+        targetItems = openItemsFirst(arrayMove(targetItems, oldIndex, newIndex));
         setBoard((prev) => ({ ...prev, [to]: targetItems }));
       }
     }
@@ -482,16 +533,28 @@ export function ListPage() {
       resync();
       return;
     }
+    // Open and completed items are separate visual ordering groups. A neighbor
+    // from the other group can have a fractional key on the opposite side of
+    // the requested move, so only same-status peers may anchor the new key.
+    const neighbors = statusNeighbors(targetItems, activeId);
+    if (!neighbors) {
+      resync();
+      return;
+    }
     reorder.mutate({
       id: activeId,
       categoryId: to === UNCATEGORIZED ? null : to,
-      previousId: targetItems[index - 1]?.id ?? null,
-      nextId: targetItems[index + 1]?.id ?? null,
+      ...neighbors,
     });
   }
 
   const realCategories = columns.filter((column) => column.categoryId);
   const uncategorizedColumn = columns.find((column) => column.categoryId === null);
+  const completedCount = Object.values(board)
+    .flat()
+    .filter((item) => item.status === 'done').length;
+  const allCategoriesCollapsed =
+    columns.length > 0 && columns.every((column) => collapsedColumns.has(column.id));
   const activeItem =
     activeType === 'item' && activeId
       ? (Object.values(board)
@@ -504,6 +567,9 @@ export function ListPage() {
       : null;
 
   function renderPanel(column: Column) {
+    const columnCompletedCount = (board[column.id] ?? []).filter(
+      (item) => item.status === 'done',
+    ).length;
     return (
       <CategoryPanel
         key={column.id}
@@ -519,6 +585,19 @@ export function ListPage() {
         onAddItem={async (itemTitle) => {
           await addItem.mutateAsync({ title: itemTitle, categoryId: column.categoryId });
         }}
+        collapsed={collapsedColumns.has(column.id)}
+        onToggleCollapse={() => toggleColumnCollapse(column.id)}
+        removeCompletedPending={removeCompleted.isPending}
+        onRemoveCompleted={
+          columnCompletedCount > 0
+            ? () =>
+                requestRemoveCompleted(
+                  { categoryId: column.categoryId },
+                  columnCompletedCount,
+                  column.name,
+                )
+            : undefined
+        }
         color={column.color}
         onRecolor={
           column.categoryId
@@ -608,25 +687,62 @@ export function ListPage() {
       </div>
 
       <section className="stack-lg">
-        <div className="section-title">
-          <h2>Items</h2>
-          <span className="subtle">{data.items.length} total</span>
+        <div className="items-toolbar">
+          <div className="section-title">
+            <h2>Items</h2>
+            <span className="subtle">{data.items.length} total</span>
+          </div>
+          <div className="row wrap items-toolbar__actions">
+            <button
+              type="button"
+              className="btn-sm"
+              onClick={() => {
+                setCollapsedColumns(
+                  allCategoriesCollapsed ? new Set() : new Set(columns.map((column) => column.id)),
+                );
+              }}
+              aria-label={`${allCategoriesCollapsed ? 'Expand' : 'Collapse'} all categories`}
+            >
+              <ChevronDownIcon
+                className={`collapse-chevron${allCategoriesCollapsed ? ' is-collapsed' : ''}`}
+              />
+              <span>{allCategoriesCollapsed ? 'Expand all' : 'Collapse all'}</span>
+            </button>
+            {completedCount > 0 && (
+              <button
+                type="button"
+                className="danger btn-sm"
+                disabled={removeCompleted.isPending}
+                onClick={() => requestRemoveCompleted({}, completedCount)}
+              >
+                <TrashIcon />
+                <span>Remove all completed ({completedCount})</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <form className="row" onSubmit={onAddItem}>
+        <form className="add-category" onSubmit={onAddCategory}>
           <input
             className="grow"
-            aria-label="New item title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Add an item…"
-            required
+            aria-label="New category name"
+            value={newCategory}
+            onChange={(event) => setNewCategory(event.target.value)}
+            placeholder="New category (e.g. Produce)"
           />
-          <button className="primary" type="submit" disabled={addItem.isPending}>
+          <button
+            className="primary"
+            type="submit"
+            disabled={categoryCreate.isPending || newCategory.trim().length === 0}
+          >
             <PlusIcon />
-            <span>Add</span>
+            <span>Add category</span>
           </button>
         </form>
+
+        {removeCompleted.isError && (
+          <p className="alert error">Could not remove the completed items. Please try again.</p>
+        )}
 
         <DndContext
           sensors={sensors}
@@ -699,23 +815,6 @@ export function ListPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
-
-        <form className="add-category" onSubmit={onAddCategory}>
-          <input
-            className="grow"
-            aria-label="New category name"
-            value={newCategory}
-            onChange={(event) => setNewCategory(event.target.value)}
-            placeholder="New category (e.g. Produce)"
-          />
-          <button
-            type="submit"
-            disabled={categoryCreate.isPending || newCategory.trim().length === 0}
-          >
-            <PlusIcon />
-            <span>Add category</span>
-          </button>
-        </form>
       </section>
 
       {isOwner && (

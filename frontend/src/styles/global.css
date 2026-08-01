@@ -740,8 +740,8 @@ label {
 .item {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-2);
+  gap: var(--space-2);
+  padding: 0.45rem var(--space-2);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -800,7 +800,7 @@ label {
   min-width: 0;
   border: 1px solid transparent;
   background: transparent;
-  padding: 0.35rem 0.5rem;
+  padding: 0.2rem 0.5rem;
   font-weight: 500;
   border-radius: var(--radius-sm);
 }
@@ -815,8 +815,13 @@ label {
 .item__meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding-left: calc(1.75rem + var(--space-2));
+}
+
+.item__meta input,
+.item__meta select {
+  padding-block: 0.4rem;
 }
 
 /* Custom checkbox */
@@ -865,6 +870,26 @@ label {
   gap: var(--space-4);
 }
 
+.items-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.items-toolbar .section-title {
+  margin-bottom: 0;
+}
+
+.collapse-chevron {
+  transition: transform 0.15s ease;
+}
+
+.collapse-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -885,6 +910,11 @@ label {
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+}
+
+.panel.is-collapsed .panel__header {
+  border-bottom: 0;
+  border-radius: calc(var(--radius) - 1px);
 }
 
 .panel__title {
@@ -995,6 +1025,14 @@ label {
   gap: var(--space-2);
 }
 
+.panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .panel__quick-add input {
   min-width: 0;
   padding-block: 0.45rem;
@@ -1005,10 +1043,15 @@ label {
   color: var(--text-muted);
 }
 
+.panel__remove-completed {
+  margin-left: auto;
+}
+
 .add-category {
   display: flex;
   gap: var(--space-2);
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* --------------------------------------------------------------------------
