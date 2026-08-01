@@ -708,6 +708,24 @@ test('mobile layout stays inside an iPhone 13 viewport', async ({ page }) => {
   const compactItemBox = await mobilePanel.locator('.item').boundingBox();
   expect(compactItemBox).not.toBeNull();
   expect(compactItemBox!.height).toBeLessThan(60);
+
+  const addedItem = await itemRowByTitle(mobilePanel, 'Added by touch button');
+  await addedItem.getByRole('checkbox').click();
+  await expect(addedItem.getByRole('checkbox')).toBeChecked();
+  await mobilePanel.getByRole('button', { name: 'Add item to “Mobile category”' }).click();
+  const quickAddBox = await mobilePanel.locator('.panel__quick-add').boundingBox();
+  const quickAddInputBox = await mobilePanel
+    .getByLabel('New item for “Mobile category”')
+    .boundingBox();
+  const removeCompletedBox = await mobilePanel
+    .getByRole('button', { name: 'Remove completed items from “Mobile category”' })
+    .boundingBox();
+  expect(quickAddBox).not.toBeNull();
+  expect(quickAddInputBox).not.toBeNull();
+  expect(removeCompletedBox).not.toBeNull();
+  expect(quickAddInputBox!.width).toBeGreaterThan(140);
+  expect(removeCompletedBox!.y).toBeGreaterThanOrEqual(quickAddBox!.y + quickAddBox!.height);
+  expect(removeCompletedBox!.width).toBeGreaterThanOrEqual(quickAddBox!.width - 1);
   await page.getByLabel('Change color of category “Mobile category”').click();
 
   const colorPicker = page.locator('.color-picker__panel:visible');

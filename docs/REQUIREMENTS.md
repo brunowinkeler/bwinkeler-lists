@@ -143,6 +143,7 @@ assumed.
 | LST-ITM-013 | Before removing completed items for a category or the whole list, the system shall require explicit user confirmation.                                                     | O5     | T      |
 | LST-ITM-014 | Within every category, the system shall present open items before completed items while preserving each partition's relative manual order.                                 | O5; A4 | T      |
 | LST-ITM-015 | Item cards shall use a compact layout approximately 25 percent shorter than the preceding standard card layout while retaining usable controls.                            | O5     | I      |
+| LST-ITM-016 | On mobile viewports, a category's completed-item removal control shall appear below its full-width item quick-add row rather than competing with it for horizontal space.  | O5     | T      |
 
 ### 3.4 Categories (LST-CAT)
 

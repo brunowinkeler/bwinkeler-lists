@@ -1325,6 +1325,23 @@ summary::-webkit-details-marker {
     flex-wrap: wrap;
   }
 
+  .panel__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel__quick-add {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .panel__remove-completed {
+    width: 100%;
+    margin-left: 0;
+    align-self: stretch;
+    justify-content: center;
+  }
+
   .list-grid {
     grid-template-columns: minmax(0, 1fr);
   }
