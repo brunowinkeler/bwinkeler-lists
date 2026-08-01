@@ -78,7 +78,7 @@ async function dragUpWithScroll(
   await page.mouse.move(startX, startY);
   await page.mouse.down();
   await page.mouse.move(startX, startY - 10, { steps: 4 });
-  await page.waitForTimeout(80);
+  await expect(page.locator('.item.is-dragging, .panel.is-dragging')).toHaveCount(1);
 
   // Keep the drag active while scrolling toward an off-screen target. This is
   // the production case that exposed viewport/collation ordering differences.
@@ -102,7 +102,9 @@ async function dragUpWithScroll(
   await page.waitForTimeout(150);
   const to = await target.boundingBox();
   if (!to) throw new Error('target bounding box missing after scroll');
-  await page.mouse.move(to.x + to.width / 2, to.y - 12, { steps: 12 });
+  // Stay inside the target's upper half. Moving above the row can leave the
+  // category body on Linux CI and clear dnd-kit's active `over` target.
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 4, { steps: 12 });
   await page.waitForTimeout(150);
   await page.mouse.up();
 }
