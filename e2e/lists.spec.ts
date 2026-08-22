@@ -133,8 +133,8 @@ async function itemRowByTitle(panel: Locator, title: string): Promise<Locator> {
       (elements, expectedTitle) =>
         elements.findIndex(
           (element) =>
-            (element.querySelector<HTMLInputElement>('input[aria-label="Item title"]')?.value ??
-              '') === expectedTitle,
+            (element.querySelector<HTMLTextAreaElement>('textarea[aria-label="Item title"]')
+              ?.value ?? '') === expectedTitle,
         ),
       title,
     );
@@ -154,7 +154,7 @@ async function expectItemTitle(
         .getByLabel('Item title', { exact: true })
         .evaluateAll(
           (inputs, expectedTitle) =>
-            inputs.some((input) => (input as HTMLInputElement).value === expectedTitle),
+            inputs.some((input) => (input as HTMLTextAreaElement).value === expectedTitle),
           title,
         ),
     )
@@ -348,7 +348,7 @@ test('completed items move to the bottom and are removed only after confirmation
     .poll(() =>
       fruitPanel
         .getByLabel('Item title', { exact: true })
-        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLTextAreaElement).value)),
     )
     .toEqual(['Still open', 'Done first']);
   await expect(page.getByRole('button', { name: 'Delete “Done first”' })).toHaveCount(0);
@@ -503,7 +503,7 @@ test('reorder items within a bucket', async ({ page }) => {
     .poll(async () =>
       page
         .getByLabel('Item title', { exact: true })
-        .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+        .evaluateAll((els) => els.map((el) => (el as HTMLTextAreaElement).value)),
     )
     .toEqual(['Third', 'First', 'Second']);
 
@@ -512,7 +512,7 @@ test('reorder items within a bucket', async ({ page }) => {
     .poll(async () =>
       page
         .getByLabel('Item title', { exact: true })
-        .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+        .evaluateAll((els) => els.map((el) => (el as HTMLTextAreaElement).value)),
     )
     .toEqual(['Third', 'First', 'Second']);
 });
@@ -534,7 +534,7 @@ test('reorder open items at the completed-item boundary', async ({ page }) => {
     .poll(() =>
       panel
         .getByLabel('Item title', { exact: true })
-        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLTextAreaElement).value)),
     )
     .toEqual(['Open first', 'Open second', 'Completed first']);
 
@@ -555,7 +555,7 @@ test('reorder open items at the completed-item boundary', async ({ page }) => {
     .poll(() =>
       panel
         .getByLabel('Item title', { exact: true })
-        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLTextAreaElement).value)),
     )
     .toEqual(['Open second', 'Open first', 'Completed first']);
 });
@@ -587,7 +587,7 @@ test('a small drag keeps items in place (midpoint threshold)', async ({ page }) 
   await expect(
     page
       .getByLabel('Item title', { exact: true })
-      .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value)),
+      .evaluateAll((els) => els.map((el) => (el as HTMLTextAreaElement).value)),
   ).resolves.toEqual(['First', 'Second']);
 });
 
@@ -619,8 +619,8 @@ test('move an item into a category', async ({ page }) => {
           p.querySelector('.panel__title')?.textContent?.includes('Fruit'),
         );
         return fruit
-          ? Array.from(fruit.querySelectorAll('input[aria-label="Item title"]')).map(
-              (i) => (i as HTMLInputElement).value,
+          ? Array.from(fruit.querySelectorAll('textarea[aria-label="Item title"]')).map(
+              (i) => (i as HTMLTextAreaElement).value,
             )
           : [];
       }),
@@ -736,4 +736,109 @@ test('mobile layout stays inside an iPhone 13 viewport', async ({ page }) => {
   expect(colorBox!.x).toBeGreaterThanOrEqual(0);
   expect(colorBox!.x + colorBox!.width).toBeLessThanOrEqual(390);
   await expectNoHorizontalOverflow(page);
+});
+
+test('a newly created list is listed before the older ones', async ({ page }) => {
+  await login(page);
+  const older = `Older ${Date.now()}`;
+  await page.getByLabel('New list name').fill(older);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: older })).toBeVisible();
+
+  await page.goto('/');
+  const newer = `Newer ${Date.now()}`;
+  await page.getByLabel('New list name').fill(newer);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: newer })).toBeVisible();
+
+  await page.goto('/');
+  const order = async (): Promise<number[]> => {
+    const names = await page.locator('.list-tile__name').allTextContents();
+    return [names.indexOf(newer), names.indexOf(older)];
+  };
+  await expect.poll(order).not.toContain(-1);
+  const [newerIndex, olderIndex] = await order();
+  expect(newerIndex).toBeLessThan(olderIndex);
+});
+
+test('a long item title wraps instead of being clipped', async ({ page }) => {
+  await login(page);
+  const listName = `Wrap ${Date.now()}`;
+  await page.getByLabel('New list name').fill(listName);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: listName })).toBeVisible();
+
+  const longTitle =
+    'Pick up the wholemeal sourdough, the smoked paprika, four ripe avocados and a large bag of ice on the way home';
+  await addItemToCategory(page, longTitle);
+  const title = page.getByLabel('Item title', { exact: true }).first();
+  await expect(title).toHaveValue(longTitle);
+
+  const metrics = await title.evaluate((element) => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight,
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth,
+    lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight),
+  }));
+  // Nothing is hidden vertically and nothing scrolls sideways.
+  expect(metrics.clientHeight).toBeGreaterThanOrEqual(metrics.scrollHeight - 1);
+  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  expect(metrics.clientHeight).toBeGreaterThan(metrics.lineHeight * 1.5);
+});
+
+test('mobile: the new-list name field takes a row of its own', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+
+  const nameBox = await page.getByLabel('New list name').boundingBox();
+  const kindBox = await page.getByLabel('Kind').boundingBox();
+  const createBox = await page.getByRole('button', { name: 'Create' }).boundingBox();
+  expect(nameBox).not.toBeNull();
+  expect(kindBox).not.toBeNull();
+  expect(createBox).not.toBeNull();
+
+  expect(kindBox!.y).toBeGreaterThanOrEqual(nameBox!.y + nameBox!.height);
+  expect(createBox!.y).toBeGreaterThanOrEqual(nameBox!.y + nameBox!.height);
+  expect(nameBox!.width).toBeGreaterThan(kindBox!.width + createBox!.width);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('the app is installable and launches without browser chrome', async ({ page }) => {
+  await login(page);
+
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    'href',
+    '/manifest.webmanifest',
+  );
+  await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute(
+    'content',
+    'yes',
+  );
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    'href',
+    '/icons/apple-touch-icon.png',
+  );
+
+  const response = await page.request.get('/manifest.webmanifest');
+  expect(response.ok()).toBeTruthy();
+  const manifest = (await response.json()) as {
+    display: string;
+    start_url: string;
+    icons: { sizes: string; purpose: string }[];
+  };
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toBe('/');
+  const sizes = manifest.icons.map((icon) => icon.sizes);
+  expect(sizes).toContain('192x192');
+  expect(sizes).toContain('512x512');
+  expect(manifest.icons.some((icon) => icon.purpose === 'maskable')).toBe(true);
+
+  for (const asset of ['/sw.js', '/icons/icon-192.png', '/icons/apple-touch-icon.png']) {
+    expect((await page.request.get(asset)).ok()).toBeTruthy();
+  }
+
+  await expect
+    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+    .toBe(true);
 });

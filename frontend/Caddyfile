@@ -7,6 +7,16 @@
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
+	# The shell, the worker, and the manifest must never be served stale, or a
+	# deployed release cannot take effect.
+	@shell path /index.html /sw.js /manifest.webmanifest
+	header @shell Cache-Control "no-cache"
+
+	# The caddy image has no system MIME table, so .webmanifest would otherwise
+	# be served as application/octet-stream and rejected by browsers.
+	@manifest path /manifest.webmanifest
+	header @manifest Content-Type "application/manifest+json"
+
 	header {
 		X-Content-Type-Options nosniff
 		Referrer-Policy strict-origin-when-cross-origin

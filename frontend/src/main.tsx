@@ -13,3 +13,12 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// Registering a worker is what makes the app installable; it caches nothing.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      // An unavailable worker only costs the install prompt; the app still runs.
+    });
+  });
+}

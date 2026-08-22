@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   createListInputSchema,
   duplicateListInputSchema,
@@ -23,7 +23,7 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
       .from(listMembers)
       .innerJoin(lists, eq(lists.id, listMembers.listId))
       .where(eq(listMembers.userId, user.id))
-      .orderBy(asc(lists.createdAt));
+      .orderBy(desc(lists.createdAt), desc(lists.id));
     return reply.send({
       lists: rows.map((row) => toListSummary(row.list, row.role, row.pinned)),
     });

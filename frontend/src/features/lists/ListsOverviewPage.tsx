@@ -74,8 +74,8 @@ export function ListsOverviewPage() {
         </div>
 
         <form className="card" onSubmit={onCreate}>
-          <div className="row wrap" style={{ alignItems: 'flex-end' }}>
-            <div className="field grow">
+          <div className="row wrap create-list__row">
+            <div className="field grow create-list__name">
               <label htmlFor="list-name">New list name</label>
               <input
                 id="list-name"
@@ -85,7 +85,7 @@ export function ListsOverviewPage() {
                 required
               />
             </div>
-            <div className="field">
+            <div className="field create-list__kind">
               <label htmlFor="list-kind">Kind</label>
               <select
                 id="list-kind"
@@ -96,7 +96,11 @@ export function ListsOverviewPage() {
                 <option value="task">Task list</option>
               </select>
             </div>
-            <button className="primary" type="submit" disabled={create.isPending}>
+            <button
+              className="primary create-list__submit"
+              type="submit"
+              disabled={create.isPending}
+            >
               <PlusIcon />
               <span>Create</span>
             </button>

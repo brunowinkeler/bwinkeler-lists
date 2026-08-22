@@ -90,6 +90,7 @@ assumed.
 | A15 | Items may belong to at most one per-list category; categories are managed per list, may have a color, and have a manual order; items without a category appear in an "Uncategorized" group shown last.            |
 | A16 | A user with access to a list may duplicate it; options exclude completed items or reset copied items to open; the copy is owned by the duplicating user, copies the categories, and does not copy item assignees. |
 | A17 | A user may pin lists; pinned lists appear first in that user's own overview. Pinning is per user.                                                                                                                 |
+| A18 | The responsive web UI is also installable from the browser as a home-screen application that launches without browser navigation chrome. It stays online-only: nothing is cached for offline use.                 |
 
 ---
 
@@ -123,27 +124,32 @@ assumed.
 | LST-LST-010 | The system shall allow a user with access to a list to duplicate it, copying its categories and items, with options to exclude completed items or to reset copied items to open; the copy shall be owned by the duplicating user and shall not copy item assignees. | O5; A16         | T      |
 | LST-LST-011 | The system shall allow a member to pin or unpin a list for their own account and shall present that user's pinned lists before their other lists.                                                                                                                   | O5; A17         | T      |
 | LST-LST-012 | The list-creation form shall select the `simple` list kind by default while allowing the user to choose `task`.                                                                                                                                                     | O1; A1          | T      |
+| LST-LST-013 | The system shall present a user's unpinned lists in descending creation order, so that a newly created list appears first.                                                                                                                                          | O5              | T      |
+| LST-LST-014 | On mobile viewports, the list-creation form shall place the name field on its own full-width row above the kind picker and the submit control.                                                                                                                      | A10             | T      |
+| LST-LST-013 | The system shall present a user's unpinned lists in descending creation order, so a newly created list appears first.                                                                                                                                               | O5              | T      |
+| LST-LST-014 | On mobile viewports, the list-creation form shall place the name field on its own full-width row above the kind picker and the submit control.                                                                                                                      | A10             | T      |
 
 ### 3.3 Items (LST-ITM)
 
-| ID          | Requirement                                                                                                                                                                | Trace  | Verify |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
-| LST-ITM-001 | The system shall allow an Owner or Editor to add an item with a non-empty title directly from a selected category panel or the Uncategorized panel.                        | O1; O5 | T      |
-| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                         | O1     | T      |
-| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                                | O1     | T      |
-| LST-ITM-004 | The list UI shall not offer individual item deletion; it shall allow an Owner or Editor to remove completed items in bulk for one category or the whole list.              | O1; O5 | T      |
-| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                                  | A4     | T      |
-| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                                      | A4     | T      |
-| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                         | A4     | T      |
-| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                         | A4     | T      |
-| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                                     | A4     | T      |
-| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes.        | A1     | T      |
-| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                                 | O4     | I      |
-| LST-ITM-012 | The category-local controls, including the Uncategorized panel control, shall be the standard item-creation path; the list header shall not contain an item-creation form. | O5     | T      |
-| LST-ITM-013 | Before removing completed items for a category or the whole list, the system shall require explicit user confirmation.                                                     | O5     | T      |
-| LST-ITM-014 | Within every category, the system shall present open items before completed items while preserving each partition's relative manual order.                                 | O5; A4 | T      |
-| LST-ITM-015 | Item cards shall use a compact layout approximately 25 percent shorter than the preceding standard card layout while retaining usable controls.                            | O5     | I      |
-| LST-ITM-016 | On mobile viewports, a category's completed-item removal control shall appear below its full-width item quick-add row rather than competing with it for horizontal space.  | O5     | T      |
+| ID          | Requirement                                                                                                                                                                | Trace   | Verify |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| LST-ITM-001 | The system shall allow an Owner or Editor to add an item with a non-empty title directly from a selected category panel or the Uncategorized panel.                        | O1; O5  | T      |
+| LST-ITM-002 | The system shall allow an Owner or Editor to edit an item's title.                                                                                                         | O1      | T      |
+| LST-ITM-003 | The system shall allow an Owner or Editor to toggle an item's status between open and done.                                                                                | O1      | T      |
+| LST-ITM-004 | The list UI shall not offer individual item deletion; it shall allow an Owner or Editor to remove completed items in bulk for one category or the whole list.              | O1; O5  | T      |
+| LST-ITM-005 | The system shall allow an Owner or Editor to set the manual position of items within a list and shall persist that order.                                                  | A4      | T      |
+| LST-ITM-006 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional due date.                                                      | A4      | T      |
+| LST-ITM-007 | Where the list kind is `task`, the system shall allow an Owner or Editor to set or clear an item's optional notes.                                                         | A4      | T      |
+| LST-ITM-008 | Where the list kind is `task`, the system shall allow an Owner or Editor to assign an item to a current member of the list or leave it unassigned.                         | A4      | T      |
+| LST-ITM-009 | If an item is assigned to a user who is not a current member of the list, then the system shall reject the assignment.                                                     | A4      | T      |
+| LST-ITM-010 | Where the list kind is `simple`, the system shall use only the core item attributes (title, status, position) and shall not require a due date, assignee, or notes.        | A1      | T      |
+| LST-ITM-011 | The system shall record creation and last-update timestamps for each item.                                                                                                 | O4      | I      |
+| LST-ITM-012 | The category-local controls, including the Uncategorized panel control, shall be the standard item-creation path; the list header shall not contain an item-creation form. | O5      | T      |
+| LST-ITM-013 | Before removing completed items for a category or the whole list, the system shall require explicit user confirmation.                                                     | O5      | T      |
+| LST-ITM-014 | Within every category, the system shall present open items before completed items while preserving each partition's relative manual order.                                 | O5; A4  | T      |
+| LST-ITM-015 | Item cards shall use a compact layout approximately 25 percent shorter than the preceding standard card layout while retaining usable controls.                            | O5      | I      |
+| LST-ITM-016 | On mobile viewports, a category's completed-item removal control shall appear below its full-width item quick-add row rather than competing with it for horizontal space.  | O5      | T      |
+| LST-ITM-017 | The system shall wrap an item title over as many lines as it needs, on every supported viewport, so that no part of the title is clipped or scrolled out of view.          | O1; A10 | T      |
 
 ### 3.4 Categories (LST-CAT)
 
@@ -215,16 +221,19 @@ assumed.
 
 ### 3.9 Quality (LST-QUA) — ISO/IEC 25010
 
-| ID          | Requirement                                                                                                                                                | Trace   | Verify |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
-| LST-QUA-001 | The system shall open a list of up to 500 items with a load time ≤ 1.5 s p95 on the target VPS.                                                            | O1      | T      |
-| LST-QUA-002 | The system shall support at least 50 accounts, 20 members per list, 1000 items per list, and 20 concurrent WebSocket clients without functional failure.   | §2, §23 | T      |
-| LST-QUA-003 | The system shall meet a recovery point objective ≤ 24 h and a recovery time objective ≤ 4 h via the platform backup and restore.                           | §20     | A      |
-| LST-QUA-004 | After any disconnect and reconnect cycle, all connected clients of a list shall converge to identical state.                                               | A5, A6  | T      |
-| LST-QUA-005 | The web UI shall be usable from a 320 px viewport up to desktop without horizontal overflow, including viewport-contained notification and color popovers. | A10     | D      |
-| LST-QUA-006 | The web UI shall conform to WCAG 2.2 level AA.                                                                                                             | A10     | A      |
-| LST-QUA-007 | The application shall satisfy the platform portability checklist.                                                                                          | §25     | I      |
-| LST-QUA-008 | The UI shall present all content in English in v1.                                                                                                         | A10     | I      |
+| ID          | Requirement                                                                                                                                                                                                                  | Trace   | Verify |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ |
+| LST-QUA-001 | The system shall open a list of up to 500 items with a load time ≤ 1.5 s p95 on the target VPS.                                                                                                                              | O1      | T      |
+| LST-QUA-002 | The system shall support at least 50 accounts, 20 members per list, 1000 items per list, and 20 concurrent WebSocket clients without functional failure.                                                                     | §2, §23 | T      |
+| LST-QUA-003 | The system shall meet a recovery point objective ≤ 24 h and a recovery time objective ≤ 4 h via the platform backup and restore.                                                                                             | §20     | A      |
+| LST-QUA-004 | After any disconnect and reconnect cycle, all connected clients of a list shall converge to identical state.                                                                                                                 | A5, A6  | T      |
+| LST-QUA-005 | The web UI shall be usable from a 320 px viewport up to desktop without horizontal overflow, including viewport-contained notification and color popovers.                                                                   | A10     | D      |
+| LST-QUA-006 | The web UI shall conform to WCAG 2.2 level AA.                                                                                                                                                                               | A10     | A      |
+| LST-QUA-007 | The application shall satisfy the platform portability checklist.                                                                                                                                                            | §25     | I      |
+| LST-QUA-008 | The UI shall present all content in English in v1.                                                                                                                                                                           | A10     | I      |
+| LST-QUA-009 | The system shall publish a web app manifest and application icons that make the application installable, and the installed application shall launch in standalone display mode, without the browser address bar or toolbars. | A18     | T      |
+| LST-QUA-010 | The application shall offer an in-app installation control that triggers the browser install prompt where one exists and otherwise explains the manual home-screen installation steps.                                       | A18     | D      |
+| LST-QUA-011 | The service worker shall cache no application response, so that the online-only behaviour and the deployed release remain authoritative.                                                                                     | A6; A18 | I      |
 
 ### 3.10 Security and privacy (LST-SEC)
 

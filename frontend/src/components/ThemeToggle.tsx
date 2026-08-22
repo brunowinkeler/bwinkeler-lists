@@ -3,6 +3,8 @@ import { MoonIcon, SunIcon } from './icons';
 
 type Theme = 'light' | 'dark';
 
+const THEME_COLORS: Record<Theme, string> = { light: '#f5f6fb', dark: '#0b0d13' };
+
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
 }
@@ -15,6 +17,9 @@ export function ThemeToggle() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', THEME_COLORS[theme]);
   }, [theme]);
 
   function toggle(): void {

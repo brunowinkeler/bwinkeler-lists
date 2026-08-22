@@ -17,6 +17,9 @@ and see changes in real time.
 - **In-app notifications** for invitations and task assignments.
 - **Real-time** sync over WebSocket, with reconnection and full resync.
 - **Light and dark** themes.
+- **Installable** as a home-screen app that launches without browser navigation
+  chrome. Icons are generated from code with
+  `npm run icons -w @bwinkeler-lists/frontend`.
 
 ## Documentation
 

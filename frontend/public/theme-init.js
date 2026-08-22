@@ -1,10 +1,14 @@
 // Resolve the theme before first paint to avoid a flash of the wrong theme.
 (function () {
+  var theme = 'light';
   try {
     var stored = localStorage.getItem('theme');
-    var theme = stored === 'light' || stored === 'dark' ? stored : 'light';
-    globalThis.document.documentElement.dataset.theme = theme;
+    if (stored === 'light' || stored === 'dark') theme = stored;
   } catch {
-    globalThis.document.documentElement.dataset.theme = 'light';
+    // Ignore storage failures (e.g. private browsing).
   }
+  globalThis.document.documentElement.dataset.theme = theme;
+  // Keeps the installed-app status bar in step with the theme.
+  var meta = globalThis.document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b0d13' : '#f5f6fb');
 })();

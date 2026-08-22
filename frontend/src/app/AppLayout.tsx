@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useLogout, useSession } from '../features/auth/session';
 import { NotificationsMenu } from '../features/notifications/NotificationsMenu';
 import { BrandMark } from '../components/BrandMark';
+import { InstallAppButton } from '../components/InstallAppButton';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LogoutIcon } from '../components/icons';
 import { APP_NAME } from '../config/brand';
@@ -29,6 +30,7 @@ export function AppLayout() {
             <BrandMark />
           </Link>
           <div className="app-header__actions">
+            <InstallAppButton />
             <ThemeToggle />
             <NotificationsMenu />
             <span className="user-chip">

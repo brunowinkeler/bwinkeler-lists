@@ -28,4 +28,12 @@ export default tseslint.config(
       globals: { ...globals.browser },
     },
   },
+  {
+    // Plain scripts shipped as-is to the browser: the theme bootstrap and the
+    // service worker.
+    files: ['frontend/public/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.browser, ...globals.serviceworker },
+    },
+  },
 );

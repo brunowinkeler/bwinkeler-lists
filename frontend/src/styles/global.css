@@ -640,6 +640,10 @@ label {
 /* --------------------------------------------------------------------------
    List cards (overview)
    -------------------------------------------------------------------------- */
+.create-list__row {
+  align-items: flex-end;
+}
+
 .list-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -803,6 +807,13 @@ label {
   padding: 0.2rem 0.5rem;
   font-weight: 500;
   border-radius: var(--radius-sm);
+  /* Long titles wrap onto as many lines as they need instead of scrolling
+     sideways; the textarea height is fitted to the content in ItemRow. */
+  display: block;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .item__title:hover {
   border-color: var(--border);
@@ -1086,6 +1097,26 @@ label {
   gap: var(--space-2);
 }
 
+.install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.install-steps li {
+  padding-left: var(--space-1);
+}
+
+.install-steps svg {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.15em;
+  margin-right: 0.15em;
+  color: var(--primary);
+}
+
 .check-row {
   display: flex;
   align-items: flex-start;
@@ -1344,6 +1375,20 @@ summary::-webkit-details-marker {
 
   .list-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The new-list name gets its own full-width row; the kind picker and the
+     submit button share the row below it. */
+  .create-list__name {
+    flex: 0 0 100%;
+  }
+
+  .create-list__kind {
+    flex: 1 1 auto;
+  }
+
+  .create-list__submit {
+    flex: none;
   }
 
   .item__meta {

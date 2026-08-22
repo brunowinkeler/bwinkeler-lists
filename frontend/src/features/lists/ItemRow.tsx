@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -11,6 +11,13 @@ interface ItemRowProps {
   item: ItemDto;
   kind: ListKind;
   members: MemberDto[];
+}
+
+/** Grows the title box to its wrapped content; border-box height excludes the
+ * borders that scrollHeight does not report. */
+function fitToContent(node: HTMLTextAreaElement): void {
+  node.style.height = 'auto';
+  node.style.height = `${node.scrollHeight + node.offsetHeight - node.clientHeight}px`;
 }
 
 export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
@@ -35,7 +42,7 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   const [title, setTitle] = useState(item.title);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   // Keep the local draft in sync with realtime updates, but never clobber the
   // value while the user is actively editing this field.
   useEffect(() => {
@@ -43,6 +50,27 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
       setTitle(item.title);
     }
   }, [item.title]);
+
+  // The title is a textarea so long titles wrap instead of scrolling out of
+  // view; it has to be resized manually to match its wrapped content.
+  useLayoutEffect(() => {
+    const node = titleRef.current;
+    if (node) fitToContent(node);
+  }, [title]);
+
+  // Re-fit whenever the available width changes (rotation, resize, layout).
+  useLayoutEffect(() => {
+    const node = titleRef.current;
+    if (!node) return;
+    let lastWidth = node.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (node.clientWidth === lastWidth) return;
+      lastWidth = node.clientWidth;
+      fitToContent(node);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   function commitTitle(): void {
     const next = title.trim();
@@ -81,15 +109,19 @@ export function ItemRow({ listId, item, kind, members }: ItemRowProps) {
           aria-label={`Mark “${item.title}” as done`}
           onChange={(event) => update.mutate({ status: event.target.checked ? 'done' : 'open' })}
         />
-        <input
+        <textarea
           ref={titleRef}
           className={`item__title${isDone ? ' is-done' : ''}`}
           aria-label="Item title"
+          rows={1}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={commitTitle}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              event.currentTarget.blur();
+            }
           }}
         />
       </div>
