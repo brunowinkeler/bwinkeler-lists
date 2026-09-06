@@ -691,6 +691,22 @@ label {
   color: var(--text-subtle);
 }
 
+.list-activity {
+  font-size: 0.8rem;
+  color: var(--text-subtle);
+}
+
+.list-tile__activity {
+  font-size: 0.78rem;
+  color: var(--text-subtle);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .list-tile-wrap {
   position: relative;
 }

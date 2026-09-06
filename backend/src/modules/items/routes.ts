@@ -5,6 +5,8 @@ import {
   deleteCompletedItemsInputSchema,
   reorderItemInputSchema,
   updateItemInputSchema,
+  type ListActivityKind,
+  type UpdateItemInput,
 } from '@bwinkeler-lists/shared';
 import { getSessionUser } from '../../auth/guards.js';
 import { getListRole } from '../../authz.js';
@@ -13,6 +15,20 @@ import { categoryBelongsToList } from '../categories/service.js';
 import { getListById, toItemDto, touchList } from '../lists/service.js';
 import { createNotification } from '../notifications/service.js';
 import { itemPositionById, keyBetween, lastItemPosition } from './service.js';
+
+function updateActivityKind(
+  input: UpdateItemInput,
+  existing: typeof items.$inferSelect,
+): ListActivityKind {
+  if (input.status !== undefined && input.status !== existing.status) {
+    return input.status === 'done' ? 'item_completed' : 'item_reopened';
+  }
+  if (input.title !== undefined && input.title !== existing.title) return 'item_renamed';
+  if (input.categoryId !== undefined && input.categoryId !== existing.categoryId) {
+    return 'item_moved';
+  }
+  return 'item_updated';
+}
 
 export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
   const { db } = app;
@@ -60,7 +76,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
       .returning();
     const item = rows[0];
     if (!item) return reply.code(500).send({ error: 'Failed to create item' });
-    await touchList(db, listId);
+    await touchList(db, listId, { actorId: user.id, kind: 'item_added', detail: item.title });
     await app.hub.publishSnapshot(listId);
 
     if (item.assigneeId && item.assigneeId !== user.id) {
@@ -125,7 +141,11 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     const rows = await db.update(items).set(updates).where(eq(items.id, id)).returning();
     const item = rows[0];
     if (!item) return reply.code(404).send({ error: 'Item not found' });
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind: updateActivityKind(input, existing),
+      detail: item.title,
+    });
     await app.hub.publishSnapshot(existing.listId);
 
     if (
@@ -169,7 +189,11 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
         .returning({ id: items.id });
 
       if (deleted.length > 0) {
-        await touchList(db, listId);
+        await touchList(db, listId, {
+          actorId: user.id,
+          kind: 'items_cleared',
+          detail: String(deleted.length),
+        });
         await app.hub.publishSnapshot(listId);
       }
       return reply.send({ deletedCount: deleted.length });
@@ -217,7 +241,11 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     const rows = await db.update(items).set(updates).where(eq(items.id, id)).returning();
     const item = rows[0];
     if (!item) return reply.code(404).send({ error: 'Item not found' });
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind: 'item_moved',
+      detail: item.title,
+    });
     await app.hub.publishSnapshot(existing.listId);
     return reply.send({ item: toItemDto(item) });
   });
@@ -227,7 +255,7 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
     if (!user) return;
     const { id } = request.params;
     const existingRows = await db
-      .select({ listId: items.listId })
+      .select({ listId: items.listId, title: items.title })
       .from(items)
       .where(eq(items.id, id))
       .limit(1);
@@ -237,7 +265,11 @@ export async function registerItemRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: 'Item not found' });
     }
     await db.delete(items).where(eq(items.id, id));
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind: 'item_removed',
+      detail: existing.title,
+    });
     await app.hub.publishSnapshot(existing.listId);
     return reply.code(204).send();
   });

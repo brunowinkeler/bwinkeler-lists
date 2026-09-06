@@ -33,7 +33,11 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
       .returning();
     const category = rows[0];
     if (!category) return reply.code(500).send({ error: 'Failed to create category' });
-    await touchList(db, listId);
+    await touchList(db, listId, {
+      actorId: user.id,
+      kind: 'category_added',
+      detail: category.name,
+    });
     await app.hub.publishSnapshot(listId);
     return reply.code(201).send({ category: toCategoryDto(category) });
   });
@@ -61,7 +65,14 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
     const rows = await db.update(categories).set(updates).where(eq(categories.id, id)).returning();
     const category = rows[0];
     if (!category) return reply.code(404).send({ error: 'Category not found' });
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind:
+        parsed.data.name !== undefined && parsed.data.name !== existing.name
+          ? 'category_renamed'
+          : 'category_updated',
+      detail: category.name,
+    });
     await app.hub.publishSnapshot(existing.listId);
     return reply.send({ category: toCategoryDto(category) });
   });
@@ -73,7 +84,7 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
 
     const existing = (
       await db
-        .select({ listId: categories.listId })
+        .select({ listId: categories.listId, name: categories.name })
         .from(categories)
         .where(eq(categories.id, id))
         .limit(1)
@@ -85,7 +96,11 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
 
     // Items keep existing but become uncategorized via the FK's ON DELETE SET NULL.
     await db.delete(categories).where(eq(categories.id, id));
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind: 'category_removed',
+      detail: existing.name,
+    });
     await app.hub.publishSnapshot(existing.listId);
     return reply.code(204).send();
   });
@@ -124,7 +139,11 @@ export async function registerCategoryRoutes(app: FastifyInstance): Promise<void
       .returning();
     const category = rows[0];
     if (!category) return reply.code(404).send({ error: 'Category not found' });
-    await touchList(db, existing.listId);
+    await touchList(db, existing.listId, {
+      actorId: user.id,
+      kind: 'category_moved',
+      detail: category.name,
+    });
     await app.hub.publishSnapshot(existing.listId);
     return reply.send({ category: toCategoryDto(category) });
   });

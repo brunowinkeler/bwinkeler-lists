@@ -16,6 +16,8 @@ export function mergeSnapshot(
       kind: snapshot.kind,
       ownerId: snapshot.ownerId,
       version: snapshot.version,
+      updatedAt: snapshot.updatedAt,
+      lastActivity: snapshot.lastActivity,
     },
     members: snapshot.members,
     categories: snapshot.categories,

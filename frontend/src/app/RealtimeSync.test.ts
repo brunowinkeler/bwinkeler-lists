@@ -30,6 +30,7 @@ const previous: ListDetailDto = {
     version: 1,
     createdAt: '2026-07-31T00:00:00.000Z',
     updatedAt: '2026-07-31T00:00:00.000Z',
+    lastActivity: null,
   },
   members: [],
   categories: [oldCategory],
@@ -43,6 +44,13 @@ const snapshot: ListSnapshot = {
   name: 'After',
   kind: 'task',
   ownerId: 'owner-1',
+  updatedAt: '2026-07-31T01:00:00.000Z',
+  lastActivity: {
+    kind: 'category_renamed',
+    detail: 'Reordered category',
+    actorId: 'owner-1',
+    actorName: 'Bruno',
+  },
   members: [],
   categories: [reorderedCategory],
   items: [],
@@ -54,6 +62,8 @@ describe('mergeSnapshot', () => {
 
     expect(merged?.categories).toEqual(snapshot.categories);
     expect(merged?.list.version).toBe(2);
+    expect(merged?.list.updatedAt).toBe(snapshot.updatedAt);
+    expect(merged?.list.lastActivity).toEqual(snapshot.lastActivity);
     expect(merged?.invitations).toBe(previous.invitations);
   });
 

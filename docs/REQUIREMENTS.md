@@ -3,9 +3,9 @@
 | Field                 | Value                                   |
 | --------------------- | --------------------------------------- |
 | Document              | `BW-LISTS-REQ-001`                      |
-| Version               | 1.1                                     |
+| Version               | 1.2                                     |
 | Status                | Implemented (v1)                        |
-| Last review           | 2026-07-30                              |
+| Last review           | 2026-09-06                              |
 | Owner                 | Bruno Winkeler                          |
 | Applies to            | `bwinkeler-lists` (`service_id: lists`) |
 | Platform architecture | `BW-PLATFORM-ARCH-001` v1.3             |
@@ -91,6 +91,7 @@ assumed.
 | A16 | A user with access to a list may duplicate it; options exclude completed items or reset copied items to open; the copy is owned by the duplicating user, copies the categories, and does not copy item assignees. |
 | A17 | A user may pin lists; pinned lists appear first in that user's own overview. Pinning is per user.                                                                                                                 |
 | A18 | The responsive web UI is also installable from the browser as a home-screen application that launches without browser navigation chrome. It stays online-only: nothing is cached for offline use.                 |
+| A19 | Each list retains only its most recent content change (time, acting member, and a short description). No change history or version history is stored.                                                             |
 
 ---
 
@@ -124,10 +125,10 @@ assumed.
 | LST-LST-010 | The system shall allow a user with access to a list to duplicate it, copying its categories and items, with options to exclude completed items or to reset copied items to open; the copy shall be owned by the duplicating user and shall not copy item assignees. | O5; A16         | T      |
 | LST-LST-011 | The system shall allow a member to pin or unpin a list for their own account and shall present that user's pinned lists before their other lists.                                                                                                                   | O5; A17         | T      |
 | LST-LST-012 | The list-creation form shall select the `simple` list kind by default while allowing the user to choose `task`.                                                                                                                                                     | O1; A1          | T      |
-| LST-LST-013 | The system shall present a user's unpinned lists in descending creation order, so that a newly created list appears first.                                                                                                                                          | O5              | T      |
+| LST-LST-013 | The system shall order a user's lists within each group (pinned and unpinned) by descending time of last change, so that the most recently changed list appears first.                                                                                              | O5; A19         | T      |
 | LST-LST-014 | On mobile viewports, the list-creation form shall place the name field on its own full-width row above the kind picker and the submit control.                                                                                                                      | A10             | T      |
-| LST-LST-013 | The system shall present a user's unpinned lists in descending creation order, so a newly created list appears first.                                                                                                                                               | O5              | T      |
-| LST-LST-014 | On mobile viewports, the list-creation form shall place the name field on its own full-width row above the kind picker and the submit control.                                                                                                                      | A10             | T      |
+| LST-LST-015 | The system shall record, for each list, the time of its most recent content change together with the member who made it and a short description of that change, retaining only that latest change.                                                                  | O3; A19         | T      |
+| LST-LST-016 | The list overview and the list page shall present the time of a list's last change and, where recorded, the short description of that change and the member who made it.                                                                                            | O3; A19         | T      |
 
 ### 3.3 Items (LST-ITM)
 

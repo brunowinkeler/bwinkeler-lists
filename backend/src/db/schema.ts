@@ -77,10 +77,17 @@ export const lists = pgTable(
     name: text('name').notNull(),
     kind: listKind('kind').notNull(),
     version: bigint('version', { mode: 'number' }).notNull().default(0),
+    // Only the latest change is kept; `updated_at` is its timestamp.
+    lastActivityKind: text('last_activity_kind'),
+    lastActivityDetail: text('last_activity_detail'),
+    lastActivityBy: uuid('last_activity_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (table) => [index('lists_owner_idx').on(table.ownerId)],
+  (table) => [
+    index('lists_owner_idx').on(table.ownerId),
+    index('lists_updated_idx').on(table.updatedAt),
+  ],
 );
 
 export const listMembers = pgTable(

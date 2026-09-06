@@ -3,6 +3,7 @@ import type {
   CategoryDto,
   InvitationDto,
   ItemDto,
+  ListActivityKind,
   ListDetailDto,
   ListSummaryDto,
   MemberDto,
@@ -45,6 +46,7 @@ export function toListSummary(
   row: typeof lists.$inferSelect,
   role: MemberRole,
   pinned = false,
+  actorName: string | null = null,
 ): ListSummaryDto {
   return {
     id: row.id,
@@ -56,7 +58,28 @@ export function toListSummary(
     version: row.version,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    lastActivity: row.lastActivityKind
+      ? {
+          kind: row.lastActivityKind as ListActivityKind,
+          detail: row.lastActivityDetail,
+          actorId: row.lastActivityBy,
+          actorName,
+        }
+      : null,
   };
+}
+
+export async function activityActorName(
+  db: Database,
+  actorId: string | null,
+): Promise<string | null> {
+  if (!actorId) return null;
+  const rows = await db
+    .select({ displayName: users.displayName })
+    .from(users)
+    .where(eq(users.id, actorId))
+    .limit(1);
+  return rows[0]?.displayName ?? null;
 }
 
 export async function getListById(
@@ -67,10 +90,27 @@ export async function getListById(
   return rows[0] ?? null;
 }
 
-export async function touchList(db: Database, listId: string): Promise<number> {
+export interface ListActivity {
+  actorId: string;
+  kind: ListActivityKind;
+  detail?: string | null;
+}
+
+/** Bumps the list version and replaces its single last-activity record. */
+export async function touchList(
+  db: Database,
+  listId: string,
+  activity: ListActivity,
+): Promise<number> {
   const rows = await db
     .update(lists)
-    .set({ version: sql`${lists.version} + 1`, updatedAt: new Date() })
+    .set({
+      version: sql`${lists.version} + 1`,
+      updatedAt: new Date(),
+      lastActivityBy: activity.actorId,
+      lastActivityKind: activity.kind,
+      lastActivityDetail: activity.detail ?? null,
+    })
     .where(eq(lists.id, listId))
     .returning({ version: lists.version });
   return rows[0]?.version ?? 0;
@@ -140,7 +180,7 @@ export async function loadListDetail(
   }
 
   return {
-    list: toListSummary(list, role),
+    list: toListSummary(list, role, false, await activityActorName(db, list.lastActivityBy)),
     members,
     categories: categoryRows.map(toCategoryDto),
     items: itemRows.map(toItemDto),

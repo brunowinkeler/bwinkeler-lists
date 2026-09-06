@@ -49,6 +49,7 @@ import {
 } from './api';
 import { CategoryPanel } from './CategoryPanel';
 import { DuplicateDialog } from './DuplicateDialog';
+import { LastUpdated } from './LastUpdated';
 import { SharingPanel } from '../sharing/SharingPanel';
 import { ChevronDownIcon, CopyIcon, GripIcon, PlusIcon, TrashIcon } from '../../components/icons';
 
@@ -667,6 +668,7 @@ export function ListPage() {
             <span className="badge accent">{data.list.kind}</span>
             <span className="badge">{data.list.role}</span>
           </div>
+          <LastUpdated list={data.list} />
         </div>
         <div className="row">
           <button onClick={() => setShowDuplicate(true)}>

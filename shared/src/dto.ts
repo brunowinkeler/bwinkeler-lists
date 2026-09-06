@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type {
   InvitationStatus,
   ItemStatus,
+  ListActivityKind,
   ListKind,
   MemberRole,
   NotificationType,
@@ -120,6 +121,14 @@ export const inviteInputSchema = z.object({
 });
 export type InviteInput = z.infer<typeof inviteInputSchema>;
 
+/** The most recent change to a list. `updatedAt` on the list carries its time. */
+export interface ListActivityDto {
+  kind: ListActivityKind;
+  detail: string | null;
+  actorId: string | null;
+  actorName: string | null;
+}
+
 export interface ListSummaryDto {
   id: string;
   name: string;
@@ -130,6 +139,7 @@ export interface ListSummaryDto {
   version: number;
   createdAt: string;
   updatedAt: string;
+  lastActivity: ListActivityDto | null;
 }
 
 export interface MemberDto {

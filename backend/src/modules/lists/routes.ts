@@ -9,8 +9,8 @@ import {
 import { getSessionUser } from '../../auth/guards.js';
 import { getListRole } from '../../authz.js';
 import { writeAudit } from '../../audit.js';
-import { listMembers, lists } from '../../db/schema.js';
-import { duplicateList, loadListDetail, toListSummary } from './service.js';
+import { listMembers, lists, users } from '../../db/schema.js';
+import { activityActorName, duplicateList, loadListDetail, toListSummary } from './service.js';
 
 export async function registerListRoutes(app: FastifyInstance): Promise<void> {
   const { db } = app;
@@ -19,13 +19,19 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
     const user = getSessionUser(request, reply);
     if (!user) return;
     const rows = await db
-      .select({ list: lists, role: listMembers.role, pinned: listMembers.pinned })
+      .select({
+        list: lists,
+        role: listMembers.role,
+        pinned: listMembers.pinned,
+        actorName: users.displayName,
+      })
       .from(listMembers)
       .innerJoin(lists, eq(lists.id, listMembers.listId))
+      .leftJoin(users, eq(users.id, lists.lastActivityBy))
       .where(eq(listMembers.userId, user.id))
-      .orderBy(desc(lists.createdAt), desc(lists.id));
+      .orderBy(desc(lists.updatedAt), desc(lists.id));
     return reply.send({
-      lists: rows.map((row) => toListSummary(row.list, row.role, row.pinned)),
+      lists: rows.map((row) => toListSummary(row.list, row.role, row.pinned, row.actorName)),
     });
   });
 
@@ -86,13 +92,20 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
     if (!parsed.success) return reply.code(400).send({ error: 'Invalid request' });
     const rows = await db
       .update(lists)
-      .set({ name: parsed.data.name, updatedAt: new Date(), version: sql`${lists.version} + 1` })
+      .set({
+        name: parsed.data.name,
+        updatedAt: new Date(),
+        version: sql`${lists.version} + 1`,
+        lastActivityBy: user.id,
+        lastActivityKind: 'list_renamed',
+        lastActivityDetail: parsed.data.name,
+      })
       .where(eq(lists.id, request.params.id))
       .returning();
     const list = rows[0];
     if (!list) return reply.code(404).send({ error: 'List not found' });
     await app.hub.publishSnapshot(request.params.id);
-    return reply.send({ list: toListSummary(list, role) });
+    return reply.send({ list: toListSummary(list, role, false, user.displayName) });
   });
 
   app.patch<{ Params: { id: string } }>('/lists/:id/pin', async (request, reply) => {
@@ -112,7 +125,14 @@ export async function registerListRoutes(app: FastifyInstance): Promise<void> {
     const listRows = await db.select().from(lists).where(eq(lists.id, request.params.id)).limit(1);
     const list = listRows[0];
     if (!list) return reply.code(404).send({ error: 'List not found' });
-    return reply.send({ list: toListSummary(list, role, member.pinned) });
+    return reply.send({
+      list: toListSummary(
+        list,
+        role,
+        member.pinned,
+        await activityActorName(db, list.lastActivityBy),
+      ),
+    });
   });
 
   app.delete<{ Params: { id: string } }>('/lists/:id', async (request, reply) => {

@@ -12,3 +12,22 @@ export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
 
 export const NOTIFICATION_TYPES = ['list_invitation', 'task_assignment'] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+/** Kinds of the single last change recorded per list. No history is kept. */
+export const LIST_ACTIVITY_KINDS = [
+  'item_added',
+  'item_renamed',
+  'item_completed',
+  'item_reopened',
+  'item_updated',
+  'item_moved',
+  'item_removed',
+  'items_cleared',
+  'category_added',
+  'category_renamed',
+  'category_updated',
+  'category_moved',
+  'category_removed',
+  'list_renamed',
+] as const;
+export type ListActivityKind = (typeof LIST_ACTIVITY_KINDS)[number];

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ListKind, ListSummaryDto } from '@bwinkeler-lists/shared';
 import { createList, fetchLists, listsKey, setListPinned } from './api';
+import { LastUpdated } from './LastUpdated';
 import { InvitationsInbox } from '../sharing/InvitationsInbox';
 import { PinIcon, PlusIcon } from '../../components/icons';
 
@@ -47,6 +48,7 @@ export function ListsOverviewPage() {
             <span className="badge accent">{list.kind}</span>
             <span className="badge">{list.role}</span>
           </span>
+          <LastUpdated list={list} className="list-tile__activity" />
         </Link>
         <button
           type="button"

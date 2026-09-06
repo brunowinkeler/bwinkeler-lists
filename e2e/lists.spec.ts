@@ -761,6 +761,37 @@ test('a newly created list is listed before the older ones', async ({ page }) =>
   expect(newerIndex).toBeLessThan(olderIndex);
 });
 
+test('the last changed list moves to the top and reports its last change', async ({ page }) => {
+  await login(page);
+  const first = `Changed ${Date.now()}`;
+  await page.getByLabel('New list name').fill(first);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: first })).toBeVisible();
+  const firstUrl = page.url();
+
+  await page.goto('/');
+  const second = `Untouched ${Date.now()}`;
+  await page.getByLabel('New list name').fill(second);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByRole('heading', { name: second })).toBeVisible();
+
+  await page.goto(firstUrl);
+  await addItemToCategory(page, 'Fresh bread');
+  await expect(page.locator('.list-activity')).toContainText('added “Fresh bread”');
+
+  await page.goto('/');
+  const order = async (): Promise<number[]> => {
+    const names = await page.locator('.list-tile__name').allTextContents();
+    return [names.indexOf(first), names.indexOf(second)];
+  };
+  await expect.poll(order).not.toContain(-1);
+  const [firstIndex, secondIndex] = await order();
+  expect(firstIndex).toBeLessThan(secondIndex);
+
+  const tile = page.locator('.list-tile', { has: page.getByText(first, { exact: true }) });
+  await expect(tile.locator('.list-tile__activity')).toContainText('added “Fresh bread”');
+});
+
 test('a long item title wraps instead of being clipped', async ({ page }) => {
   await login(page);
   const listName = `Wrap ${Date.now()}`;

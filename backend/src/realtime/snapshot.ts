@@ -1,8 +1,8 @@
 import { eq, sql } from 'drizzle-orm';
-import type { ListSnapshot } from '@bwinkeler-lists/shared';
+import type { ListActivityKind, ListSnapshot } from '@bwinkeler-lists/shared';
 import type { Database } from '../db/client.js';
 import { categories, items, listMembers, lists, users } from '../db/schema.js';
-import { toCategoryDto, toItemDto } from '../modules/lists/service.js';
+import { activityActorName, toCategoryDto, toItemDto } from '../modules/lists/service.js';
 
 export async function loadListSnapshot(db: Database, listId: string): Promise<ListSnapshot | null> {
   const listRows = await db.select().from(lists).where(eq(lists.id, listId)).limit(1);
@@ -40,6 +40,15 @@ export async function loadListSnapshot(db: Database, listId: string): Promise<Li
     name: list.name,
     kind: list.kind,
     ownerId: list.ownerId,
+    updatedAt: list.updatedAt.toISOString(),
+    lastActivity: list.lastActivityKind
+      ? {
+          kind: list.lastActivityKind as ListActivityKind,
+          detail: list.lastActivityDetail,
+          actorId: list.lastActivityBy,
+          actorName: await activityActorName(db, list.lastActivityBy),
+        }
+      : null,
     members: memberRows.map((member) => ({
       userId: member.userId,
       role: member.role,

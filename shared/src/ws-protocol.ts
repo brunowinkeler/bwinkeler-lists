@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { CategoryDto, ItemDto, MemberDto } from './dto.js';
+import type { CategoryDto, ItemDto, ListActivityDto, MemberDto } from './dto.js';
 import type { ListKind } from './enums.js';
 
 export interface ListSnapshot {
@@ -8,6 +8,8 @@ export interface ListSnapshot {
   name: string;
   kind: ListKind;
   ownerId: string;
+  updatedAt: string;
+  lastActivity: ListActivityDto | null;
   members: MemberDto[];
   categories: CategoryDto[];
   items: ItemDto[];
