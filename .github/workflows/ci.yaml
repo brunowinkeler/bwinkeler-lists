@@ -37,8 +37,8 @@ jobs:
       SESSION_SECRET: ci-session-secret-please-change
       LOG_LEVEL: silent
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.14.0
           cache: npm
@@ -73,8 +73,8 @@ jobs:
       PGUSER: lists_test
       PGPASSWORD: lists_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.14.0
           cache: npm
@@ -89,6 +89,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: docker build -f backend/Dockerfile -t lists-api:ci .
       - run: docker build -f frontend/Dockerfile -t lists-web:ci .
